@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">ConnTest</string>
+    <string name="notification_channel">Connessione SSH di ConnTest</string>
+    <string name="notification_title">Instradamento SSH di ConnTest</string>
+    <string name="intro">Verifica una connessione SSH con instradamento per l’intero dispositivo. ConnTest crea l’equivalente di ssh -D, quindi inoltra il traffico TCP e le richieste DNS delle altre app tramite l’endpoint SOCKS SSH. Il traffico UDP non DNS viene bloccato perché ssh -D non supporta UDP.</string>
+    <string name="ssh_host">Host SSH</string>
+    <string name="ssh_port">Porta SSH</string>
+    <string name="ssh_username">Nome utente SSH</string>
+    <string name="generated_public_key">Chiave pubblica Ed25519 generata (aggiungi questa riga al file authorized_keys del server):</string>
+    <string name="generating_key">Generazione della chiave Ed25519…</string>
+    <string name="regenerate_key">Rigenera la chiave Ed25519</string>
+    <string name="regenerate">Rigenera</string>
+    <string name="regenerate_key_warning">La vecchia chiave verrà sostituita definitivamente. Le connessioni non riusciranno finché la nuova chiave pubblica non sarà aggiunta al server SSH.</string>
+    <string name="key_generation_failed">Impossibile generare la chiave Ed25519: %1$s</string>
+    <string name="generated_key_required">È necessaria una chiave Ed25519 generata</string>
+    <string name="ssh_password">Password SSH di riserva (facoltativa)</string>
+    <string name="socks_port">Porta SOCKS locale</string>
+    <string name="accept_unknown_host">Solo per i test: accetta una chiave host SSH sconosciuta (-o StrictHostKeyChecking=no)</string>
+    <string name="connect">Verifica SSH con instradamento</string>
+    <string name="disconnect">Disconnetti</string>
+    <string name="status_format">Stato: %1$s</string>
+    <string name="status_disconnected">disconnesso</string>
+    <string name="status_starting">Avvio della verifica della connessione SSH…</string>
+    <string name="status_connecting">connessione a %1$s@%2$s:%3$d</string>
+    <string name="status_connected">connesso — TCP e DNS tramite %1$s</string>
+    <string name="status_failed">non riuscito: %1$s</string>
+    <string name="routing_permission_denied">L’autorizzazione per l’instradamento non è stata concessa</string>
+    <string name="host_and_user_required">Sono necessari l’host SSH e il nome utente</string>
+    <string name="private_key_read_failed">Impossibile leggere la chiave privata generata: %1$s</string>
+    <string name="invalid_port">%1$s deve essere compresa tra 1 e 65535</string>
+    <string name="command_format">Comando di verifica equivalente:\nssh -N -D %1$s -p %2$s -i &lt;chiave-ed25519-generata&gt;%3$s %4$s@%5$s</string>
+    <string name="show_logs">Mostra i registri di connessione</string>
+    <string name="hide_logs">Nascondi i registri di connessione</string>
+    <string name="share_logs">Condividi il file di registro</string>
+    <string name="clear_logs">Cancella i registri</string>
+    <string name="no_logs">Non sono ancora presenti registri di connessione.</string>
+    <string name="share_logs_failed">Impossibile condividere i registri: %1$s</string>
+    <string name="test_url">URL di verifica</string>
+    <string name="send_http_request">Invia una richiesta HTTP tramite l’instradamento SSH</string>
+    <string name="http_result_waiting">Il risultato della verifica HTTP verrà visualizzato qui.</string>
+    <string name="http_request_running">Richiesta a %1$s…</string>
+    <string name="http_result_format">HTTP %1$d %2$s\n%3$s</string>
+    <string name="http_request_failed">Richiesta HTTP non riuscita: %1$s</string>
+    <string name="invalid_http_url">Inserisci un URL http:// o https://</string>
+    <string name="routing_not_connected">Connetti l’instradamento SSH prima di eseguire la verifica HTTP</string>
+</resources>

@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">ConnTest</string>
+    <string name="notification_channel">SSH-подключение ConnTest</string>
+    <string name="notification_title">SSH-маршрутизация ConnTest</string>
+    <string name="intro">Проверка SSH-подключения с маршрутизацией всего устройства. ConnTest создаёт аналог ssh -D, а затем направляет TCP-трафик и DNS-запросы других приложений через SSH SOCKS. UDP-трафик, кроме DNS, блокируется, поскольку ssh -D не поддерживает UDP.</string>
+    <string name="ssh_host">SSH-сервер</string>
+    <string name="ssh_port">Порт SSH</string>
+    <string name="ssh_username">Имя пользователя SSH</string>
+    <string name="generated_public_key">Созданный открытый ключ Ed25519 (добавьте эту строку в authorized_keys на сервере):</string>
+    <string name="generating_key">Создание ключа Ed25519…</string>
+    <string name="regenerate_key">Создать новый ключ Ed25519</string>
+    <string name="regenerate">Создать заново</string>
+    <string name="regenerate_key_warning">Старый ключ будет безвозвратно заменён. Подключение не будет работать, пока новый открытый ключ не будет добавлен на SSH-сервер.</string>
+    <string name="key_generation_failed">Не удалось создать ключ Ed25519: %1$s</string>
+    <string name="generated_key_required">Необходим созданный ключ Ed25519</string>
+    <string name="ssh_password">Резервный пароль SSH (необязательно)</string>
+    <string name="socks_port">Локальный порт SOCKS</string>
+    <string name="accept_unknown_host">Только для тестирования: принимать неизвестный ключ SSH-сервера (-o StrictHostKeyChecking=no)</string>
+    <string name="connect">Проверить SSH с маршрутизацией</string>
+    <string name="disconnect">Отключиться</string>
+    <string name="status_format">Состояние: %1$s</string>
+    <string name="status_disconnected">отключено</string>
+    <string name="status_starting">Запуск проверки SSH-подключения…</string>
+    <string name="status_connecting">подключение к %1$s@%2$s:%3$d</string>
+    <string name="status_connected">подключено — TCP и DNS направляются через %1$s</string>
+    <string name="status_failed">ошибка: %1$s</string>
+    <string name="routing_permission_denied">Разрешение на маршрутизацию не предоставлено</string>
+    <string name="host_and_user_required">Укажите SSH-сервер и имя пользователя</string>
+    <string name="private_key_read_failed">Не удалось прочитать созданный закрытый ключ: %1$s</string>
+    <string name="invalid_port">Значение «%1$s» должно быть от 1 до 65535</string>
+    <string name="command_format">Эквивалентная команда проверки:\nssh -N -D %1$s -p %2$s -i &lt;созданный-ключ-ed25519&gt;%3$s %4$s@%5$s</string>
+    <string name="show_logs">Показать журнал подключения</string>
+    <string name="hide_logs">Скрыть журнал подключения</string>
+    <string name="share_logs">Поделиться файлом журнала</string>
+    <string name="clear_logs">Очистить журнал</string>
+    <string name="no_logs">Журнал подключений пока пуст.</string>
+    <string name="share_logs_failed">Не удалось поделиться журналом: %1$s</string>
+    <string name="test_url">URL для проверки</string>
+    <string name="send_http_request">Отправить HTTP-запрос через SSH-маршрутизацию</string>
+    <string name="http_result_waiting">Здесь появится результат HTTP-проверки.</string>
+    <string name="http_request_running">Запрос к %1$s…</string>
+    <string name="http_result_format">HTTP %1$d %2$s\n%3$s</string>
+    <string name="http_request_failed">Ошибка HTTP-запроса: %1$s</string>
+    <string name="invalid_http_url">Введите URL с http:// или https://</string>
+    <string name="routing_not_connected">Перед HTTP-проверкой подключите SSH-маршрутизацию</string>
+</resources>

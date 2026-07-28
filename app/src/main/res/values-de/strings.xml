@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">ConnTest</string>
+    <string name="notification_channel">ConnTest-SSH-Verbindung</string>
+    <string name="notification_title">ConnTest-SSH-Routing</string>
+    <string name="intro">Testen Sie eine SSH-Verbindung mit geräteweitem Routing. ConnTest erstellt das Äquivalent zu ssh -D und leitet anschließend den TCP-Datenverkehr und die DNS-Abfragen anderer Apps über den SSH-SOCKS-Endpunkt. UDP-Datenverkehr außer DNS wird blockiert, da ssh -D UDP nicht unterstützt.</string>
+    <string name="ssh_host">SSH-Host</string>
+    <string name="ssh_port">SSH-Port</string>
+    <string name="ssh_username">SSH-Benutzername</string>
+    <string name="generated_public_key">Generierter öffentlicher Ed25519-Schlüssel (fügen Sie diese Zeile zur Datei authorized_keys auf dem Server hinzu):</string>
+    <string name="generating_key">Ed25519-Schlüssel wird generiert…</string>
+    <string name="regenerate_key">Ed25519-Schlüssel neu generieren</string>
+    <string name="regenerate">Neu generieren</string>
+    <string name="regenerate_key_warning">Der alte Schlüssel wird dauerhaft ersetzt. Verbindungen schlagen fehl, bis der neue öffentliche Schlüssel zum SSH-Server hinzugefügt wurde.</string>
+    <string name="key_generation_failed">Der Ed25519-Schlüssel konnte nicht generiert werden: %1$s</string>
+    <string name="generated_key_required">Ein generierter Ed25519-Schlüssel ist erforderlich</string>
+    <string name="ssh_password">SSH-Passwort als Ausweichlösung (optional)</string>
+    <string name="socks_port">Lokaler SOCKS-Port</string>
+    <string name="accept_unknown_host">Nur zum Testen: Unbekannten SSH-Hostschlüssel akzeptieren (-o StrictHostKeyChecking=no)</string>
+    <string name="connect">SSH mit Routing testen</string>
+    <string name="disconnect">Verbindung trennen</string>
+    <string name="status_format">Status: %1$s</string>
+    <string name="status_disconnected">getrennt</string>
+    <string name="status_starting">SSH-Verbindungstest wird gestartet…</string>
+    <string name="status_connecting">Verbindung zu %1$s@%2$s:%3$d wird hergestellt</string>
+    <string name="status_connected">verbunden — TCP und DNS über %1$s</string>
+    <string name="status_failed">fehlgeschlagen: %1$s</string>
+    <string name="routing_permission_denied">Die Routing-Berechtigung wurde nicht erteilt</string>
+    <string name="host_and_user_required">SSH-Host und Benutzername sind erforderlich</string>
+    <string name="private_key_read_failed">Der generierte private Schlüssel konnte nicht gelesen werden: %1$s</string>
+    <string name="invalid_port">%1$s muss zwischen 1 und 65535 liegen</string>
+    <string name="command_format">Entsprechender Testbefehl:\nssh -N -D %1$s -p %2$s -i &lt;generierter-ed25519-schlüssel&gt;%3$s %4$s@%5$s</string>
+    <string name="show_logs">Verbindungsprotokolle anzeigen</string>
+    <string name="hide_logs">Verbindungsprotokolle ausblenden</string>
+    <string name="share_logs">Protokolldatei teilen</string>
+    <string name="clear_logs">Protokolle löschen</string>
+    <string name="no_logs">Noch keine Verbindungsprotokolle vorhanden.</string>
+    <string name="share_logs_failed">Protokolle konnten nicht geteilt werden: %1$s</string>
+    <string name="test_url">Test-URL</string>
+    <string name="send_http_request">HTTP-Anfrage über SSH-Routing senden</string>
+    <string name="http_result_waiting">Die Ausgabe des HTTP-Tests wird hier angezeigt.</string>
+    <string name="http_request_running">%1$s wird angefragt…</string>
+    <string name="http_result_format">HTTP %1$d %2$s\n%3$s</string>
+    <string name="http_request_failed">HTTP-Anfrage fehlgeschlagen: %1$s</string>
+    <string name="invalid_http_url">Geben Sie eine URL mit http:// oder https:// ein</string>
+    <string name="routing_not_connected">Stellen Sie eine SSH-Routing-Verbindung her, bevor Sie den HTTP-Test ausführen</string>
+</resources>
