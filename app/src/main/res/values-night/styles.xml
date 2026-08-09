@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="AppTheme" parent="android:style/Theme.Material">
+        <item name="android:fontFamily">sans</item>
+        <item name="android:colorAccent">#80CBC4</item>
+        <item name="android:navigationBarColor">#081B18</item>
+        <item name="android:statusBarColor">#0B2924</item>
+        <item name="android:windowFullscreen">false</item>
+    </style>
+</resources>

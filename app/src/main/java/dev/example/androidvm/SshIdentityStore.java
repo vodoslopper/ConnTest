@@ -12,63 +12,131 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 
 final class SshIdentityStore {
-    private static final String PRIVATE_KEY_FILE = "id_ed25519";
-    private static final String COMMENT = "conntest@android";
+    static final String DEFAULT_NAME = "main";
+    private static final String LEGACY_FILE = "id_ed25519";
+    private static final String PREFIX = "ssh_key_";
+    private static final String COMMENT_SUFFIX = "@conntest";
     private static final int MAX_KEY_BYTES = 64 * 1024;
 
     private final File privateKeyFile;
+    private final String name;
     private final String publicKey;
 
-    private SshIdentityStore(File privateKeyFile, String publicKey) {
+    private SshIdentityStore(File privateKeyFile, String name, String publicKey) {
         this.privateKeyFile = privateKeyFile;
+        this.name = name;
         this.publicKey = publicKey;
     }
 
-    static synchronized SshIdentityStore loadOrCreate(Context context)
+    static synchronized void ensureDefault(Context context) throws IOException, JSchException {
+        File main = file(context, DEFAULT_NAME);
+        File legacy = new File(context.getFilesDir(), LEGACY_FILE);
+        if (!main.isFile() && legacy.isFile() && !legacy.renameTo(main)) {
+            throw new IOException("could not migrate the existing SSH identity");
+        }
+        if (!main.isFile()) {
+            writeKey(main, DEFAULT_NAME);
+            ConnectionLog.append("Generated the default unencrypted Ed25519 key 'main'");
+        }
+    }
+
+    static synchronized SshIdentityStore load(Context context, String name)
             throws IOException, JSchException {
-        File privateKeyFile = new File(context.getFilesDir(), PRIVATE_KEY_FILE);
+        validateName(name);
+        ensureDefault(context);
+        File privateKeyFile = file(context, name);
         if (!privateKeyFile.isFile()) {
-            generate(privateKeyFile);
-            ConnectionLog.append("Generated a new unencrypted Ed25519 SSH identity");
+            throw new IOException("SSH key does not exist: " + name);
         }
         KeyPair keyPair = KeyPair.load(new JSch(), privateKeyFile.getAbsolutePath());
         try {
             if (keyPair.getKeyType() != KeyPair.ED25519 || keyPair.isEncrypted()) {
                 throw new IOException("stored SSH identity is not an unencrypted Ed25519 key");
             }
-            String publicKey = keyPair.getKeyTypeString()
-                    + " "
+            String publicKey = keyPair.getKeyTypeString() + " "
                     + Base64.encodeToString(keyPair.getPublicKeyBlob(), Base64.NO_WRAP)
-                    + " "
-                    + COMMENT;
-            return new SshIdentityStore(privateKeyFile, publicKey);
+                    + " " + name + COMMENT_SUFFIX;
+            return new SshIdentityStore(privateKeyFile, name, publicKey);
         } finally {
             keyPair.dispose();
         }
     }
 
-    static synchronized SshIdentityStore regenerate(Context context)
+    static synchronized SshIdentityStore create(Context context, String name)
             throws IOException, JSchException {
-        File privateKeyFile = new File(context.getFilesDir(), PRIVATE_KEY_FILE);
-        File replacement = new File(context.getFilesDir(), PRIVATE_KEY_FILE + ".replacement");
-        File backup = new File(context.getFilesDir(), PRIVATE_KEY_FILE + ".backup");
-        deleteIfPresent(replacement, "could not clear an incomplete replacement identity");
-        deleteIfPresent(backup, "could not clear an incomplete identity backup");
-        writeKey(replacement);
-        if (privateKeyFile.exists() && !privateKeyFile.renameTo(backup)) {
-            replacement.delete();
-            throw new IOException("could not preserve the existing SSH identity");
+        validateName(name);
+        ensureDefault(context);
+        File destination = file(context, name);
+        if (destination.exists()) {
+            throw new IOException("A key named '" + name + "' already exists");
         }
-        if (!replacement.renameTo(privateKeyFile)) {
+        writeKey(destination, name);
+        ConnectionLog.append("Generated unencrypted Ed25519 key '" + name + "'");
+        return load(context, name);
+    }
+
+    static synchronized SshIdentityStore regenerate(Context context, String name)
+            throws IOException, JSchException {
+        validateName(name);
+        File destination = file(context, name);
+        File replacement = new File(context.getFilesDir(), destination.getName() + ".replacement");
+        File backup = new File(context.getFilesDir(), destination.getName() + ".backup");
+        deleteIfPresent(replacement, "could not clear an incomplete replacement key");
+        deleteIfPresent(backup, "could not clear an incomplete key backup");
+        writeKey(replacement, name);
+        if (destination.exists() && !destination.renameTo(backup)) {
+            replacement.delete();
+            throw new IOException("could not preserve the existing SSH key");
+        }
+        if (!replacement.renameTo(destination)) {
             if (backup.exists()) {
-                backup.renameTo(privateKeyFile);
+                backup.renameTo(destination);
             }
-            throw new IOException("could not save the replacement SSH identity");
+            throw new IOException("could not save the replacement SSH key");
         }
         backup.delete();
-        return loadOrCreate(context);
+        ConnectionLog.append("Regenerated Ed25519 key '" + name + "'");
+        return load(context, name);
+    }
+
+    static synchronized List<String> names(Context context) throws IOException, JSchException {
+        ensureDefault(context);
+        List<String> result = new ArrayList<>();
+        File[] files = context.getFilesDir().listFiles();
+        if (files != null) {
+            for (File candidate : files) {
+                String filename = candidate.getName();
+                if (candidate.isFile() && filename.startsWith(PREFIX)
+                        && !filename.endsWith(".replacement") && !filename.endsWith(".backup")) {
+                    result.add(filename.substring(PREFIX.length()));
+                }
+            }
+        }
+        Collections.sort(result);
+        result.remove(DEFAULT_NAME);
+        result.add(0, DEFAULT_NAME);
+        return result;
+    }
+
+    static synchronized void delete(Context context, String name) throws IOException {
+        validateName(name);
+        if (DEFAULT_NAME.equals(name)) {
+            throw new IOException("The default key 'main' cannot be deleted");
+        }
+        File destination = file(context, name);
+        if (!destination.isFile() || !destination.delete()) {
+            throw new IOException("could not delete SSH key '" + name + "'");
+        }
+        ConnectionLog.append("Deleted SSH key '" + name + "'");
+    }
+
+    String getName() {
+        return name;
     }
 
     String getPublicKey() {
@@ -92,20 +160,20 @@ final class SshIdentityStore {
         }
     }
 
-    private static void generate(File destination) throws IOException, JSchException {
-        File temporary = new File(destination.getParentFile(), PRIVATE_KEY_FILE + ".new");
-        deleteIfPresent(temporary, "could not clear an incomplete SSH identity");
-        writeKey(temporary);
-        if (!temporary.renameTo(destination)) {
-            temporary.delete();
-            throw new IOException("could not save the generated SSH identity");
+    private static File file(Context context, String name) {
+        return new File(context.getFilesDir(), PREFIX + name);
+    }
+
+    private static void validateName(String name) throws IOException {
+        if (name == null || !name.matches("[A-Za-z0-9][A-Za-z0-9._-]{0,39}")) {
+            throw new IOException("Key names may use 1-40 letters, numbers, '.', '_' or '-'");
         }
     }
 
-    private static void writeKey(File destination) throws IOException, JSchException {
+    private static void writeKey(File destination, String name) throws IOException, JSchException {
         KeyPair keyPair = KeyPair.genKeyPair(new JSch(), KeyPair.ED25519);
         try (FileOutputStream output = new FileOutputStream(destination, false)) {
-            keyPair.setPublicKeyComment(COMMENT);
+            keyPair.setPublicKeyComment(name + COMMENT_SUFFIX);
             keyPair.writeOpenSSHv1PrivateKey(output, (byte[]) null);
             output.getFD().sync();
         } finally {
