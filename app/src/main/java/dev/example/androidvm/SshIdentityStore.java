@@ -20,6 +20,7 @@ final class SshIdentityStore {
     static final String DEFAULT_NAME = "main";
     private static final String LEGACY_FILE = "id_ed25519";
     private static final String PREFIX = "ssh_key_";
+    private static final String AUTHORIZED_KEYS_OPTIONS = "restrict,port-forwarding ";
     private static final String COMMENT_SUFFIX = "@conntest";
     private static final int MAX_KEY_BYTES = 64 * 1024;
 
@@ -58,7 +59,7 @@ final class SshIdentityStore {
             if (keyPair.getKeyType() != KeyPair.ED25519 || keyPair.isEncrypted()) {
                 throw new IOException("stored SSH identity is not an unencrypted Ed25519 key");
             }
-            String publicKey = keyPair.getKeyTypeString() + " "
+            String publicKey = AUTHORIZED_KEYS_OPTIONS + keyPair.getKeyTypeString() + " "
                     + Base64.encodeToString(keyPair.getPublicKeyBlob(), Base64.NO_WRAP)
                     + " " + name + COMMENT_SUFFIX;
             return new SshIdentityStore(privateKeyFile, name, publicKey);

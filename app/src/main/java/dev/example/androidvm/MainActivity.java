@@ -5,7 +5,9 @@ import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.ClipData;
 import android.content.ClipboardManager;
+import android.content.Context;
 import android.content.Intent;
+import android.content.res.Configuration;
 import android.graphics.Typeface;
 import android.net.Uri;
 import android.net.VpnService;
@@ -49,6 +51,9 @@ public final class MainActivity extends Activity {
     private static final int MENU_HOME = 1;
     private static final int MENU_HOSTS = 2;
     private static final int MENU_KEYS = 3;
+    private static final int MENU_THEME = 4;
+    private static final String APPEARANCE_PREFS = "appearance";
+    private static final String NIGHT_OVERRIDE = "nightOverride";
     private static final String DEFAULT_TEST_URL = "https://api.ipify.org?format=json";
     private static final int MAX_HTTP_RESPONSE_BYTES = 64 * 1024;
 
@@ -64,6 +69,18 @@ public final class MainActivity extends Activity {
     private TextView httpResultView;
     private Intent pendingConnectIntent;
     private int page = MENU_HOME;
+
+    @Override protected void attachBaseContext(Context newBase) {
+        int override = newBase.getSharedPreferences(APPEARANCE_PREFS, MODE_PRIVATE)
+                .getInt(NIGHT_OVERRIDE, 0);
+        Configuration configuration = new Configuration(newBase.getResources().getConfiguration());
+        if (override == Configuration.UI_MODE_NIGHT_YES
+                || override == Configuration.UI_MODE_NIGHT_NO) {
+            configuration.uiMode = (configuration.uiMode & ~Configuration.UI_MODE_NIGHT_MASK)
+                    | override;
+        }
+        super.attachBaseContext(newBase.createConfigurationContext(configuration));
+    }
 
     private final Runnable statusUpdater = new Runnable() {
         @Override public void run() {
@@ -97,6 +114,7 @@ public final class MainActivity extends Activity {
         menu.add(0, MENU_HOME, 0, R.string.menu_home).setShowAsAction(MenuItem.SHOW_AS_ACTION_NEVER);
         menu.add(0, MENU_HOSTS, 1, R.string.menu_hosts).setShowAsAction(MenuItem.SHOW_AS_ACTION_NEVER);
         menu.add(0, MENU_KEYS, 2, R.string.menu_keys).setShowAsAction(MenuItem.SHOW_AS_ACTION_NEVER);
+        menu.add(0, MENU_THEME, 3, R.string.menu_switch_theme).setShowAsAction(MenuItem.SHOW_AS_ACTION_NEVER);
         return true;
     }
 
@@ -104,6 +122,7 @@ public final class MainActivity extends Activity {
         if (item.getItemId() == MENU_HOME) showMainPage();
         else if (item.getItemId() == MENU_HOSTS) showHostsPage();
         else if (item.getItemId() == MENU_KEYS) showKeysPage();
+        else if (item.getItemId() == MENU_THEME) switchTheme();
         else return super.onOptionsItemSelected(item);
         return true;
     }
@@ -323,15 +342,23 @@ public final class MainActivity extends Activity {
     }
 
     private void showKeyDialog(SshIdentityStore key) {
+        LinearLayout content = dialogLayout();
         TextView publicKey = text(0);
         publicKey.setText(key.getPublicKey());
         publicKey.setTextIsSelectable(true);
-        publicKey.setPadding(dp(20), dp(12), dp(20), dp(12));
-        AlertDialog dialog = new AlertDialog.Builder(this).setTitle(key.getName()).setView(publicKey)
-                .setPositiveButton(R.string.copy_public_key, (d, w) -> copy(key.getPublicKey()))
-                .setNegativeButton(R.string.regenerate, null)
-                .setNeutralButton(SshIdentityStore.DEFAULT_NAME.equals(key.getName()) ? R.string.close : R.string.delete, null)
-                .create();
+        publicKey.setPadding(0, dp(12), 0, dp(12));
+        content.addView(publicKey);
+        LinearLayout publicKeyActions = new LinearLayout(this);
+        publicKeyActions.addView(button(R.string.copy_public_key, view -> copy(key.getPublicKey())), weighted());
+        publicKeyActions.addView(button(R.string.share_public_key, view -> sharePublicKey(key)), weighted());
+        content.addView(publicKeyActions);
+        AlertDialog.Builder builder = new AlertDialog.Builder(this).setTitle(key.getName()).setView(content)
+                .setPositiveButton(R.string.close, null)
+                .setNegativeButton(R.string.regenerate, null);
+        if (!SshIdentityStore.DEFAULT_NAME.equals(key.getName())) {
+            builder.setNeutralButton(R.string.delete, null);
+        }
+        AlertDialog dialog = builder.create();
         dialog.setOnShowListener(ignored -> {
             dialog.getButton(AlertDialog.BUTTON_NEGATIVE).setOnClickListener(view -> confirmRegenerate(key.getName(), dialog));
             if (!SshIdentityStore.DEFAULT_NAME.equals(key.getName())) {
@@ -468,12 +495,32 @@ public final class MainActivity extends Activity {
         Toast.makeText(this, R.string.copied, Toast.LENGTH_SHORT).show();
     }
 
+    private void sharePublicKey(SshIdentityStore key) {
+        Intent share = new Intent(Intent.ACTION_SEND)
+                .setType("text/plain")
+                .putExtra(Intent.EXTRA_SUBJECT, getString(R.string.public_key_subject, key.getName()))
+                .putExtra(Intent.EXTRA_TEXT, key.getPublicKey());
+        startActivity(Intent.createChooser(share, getString(R.string.share_public_key)));
+    }
+
+    private void switchTheme() {
+        int current = getResources().getConfiguration().uiMode & Configuration.UI_MODE_NIGHT_MASK;
+        int next = current == Configuration.UI_MODE_NIGHT_YES
+                ? Configuration.UI_MODE_NIGHT_NO : Configuration.UI_MODE_NIGHT_YES;
+        getSharedPreferences(APPEARANCE_PREFS, MODE_PRIVATE).edit()
+                .putInt(NIGHT_OVERRIDE, next).apply();
+        recreate();
+    }
+
     private void startRoutingService(Intent intent) {
         if (Build.VERSION.SDK_INT >= 26) startForegroundService(intent); else startService(intent);
     }
 
     private LinearLayout pageLayout() {
-        LinearLayout content = new LinearLayout(this); content.setOrientation(LinearLayout.VERTICAL); content.setPadding(dp(20), dp(116), dp(20), dp(28)); return content;
+        boolean dark = (getResources().getConfiguration().uiMode
+                & Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES;
+        int topPadding = dark ? 116 : 20;
+        LinearLayout content = new LinearLayout(this); content.setOrientation(LinearLayout.VERTICAL); content.setPadding(dp(20), dp(topPadding), dp(20), dp(28)); return content;
     }
 
     private LinearLayout dialogLayout() {

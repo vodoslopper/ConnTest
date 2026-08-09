@@ -72,4 +72,7 @@
     <string name="view_key_description">View key %1$s</string>
     <string name="test_section">Test</string>
     <string name="logs_section">Logs</string>
+    <string name="menu_switch_theme">Switch theme</string>
+    <string name="share_public_key">Share public key</string>
+    <string name="public_key_subject">ConnTest SSH public key: %1$s</string>
 </resources>

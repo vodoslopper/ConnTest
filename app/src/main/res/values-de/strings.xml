@@ -52,4 +52,7 @@
     <string name="save">Speichern</string><string name="delete">Löschen</string><string name="delete_host_warning">Diesen Host löschen?</string><string name="edit_host_description">Host %1$s bearbeiten</string>
     <string name="add_key">Schlüssel hinzufügen</string><string name="key_name">Eindeutiger Schlüsselname</string><string name="create">Erstellen</string><string name="close">Schließen</string><string name="copy_public_key">Öffentlichen Schlüssel kopieren</string><string name="copied">Kopiert</string><string name="delete_key_warning">Diesen Schlüssel löschen? Verwendende Hosts wechseln zu „main“.</string><string name="view_key_description">Schlüssel %1$s anzeigen</string>
     <string name="test_section">Test</string><string name="logs_section">Protokolle</string>
+    <string name="menu_switch_theme">Design wechseln</string>
+    <string name="share_public_key">Öffentlichen Schlüssel teilen</string>
+    <string name="public_key_subject">Öffentlicher ConnTest-SSH-Schlüssel: %1$s</string>
 </resources>

@@ -52,4 +52,7 @@
     <string name="save">Salva</string><string name="delete">Elimina</string><string name="delete_host_warning">Eliminare questo host?</string><string name="edit_host_description">Modifica host %1$s</string>
     <string name="add_key">Aggiungi chiave</string><string name="key_name">Nome chiave univoco</string><string name="create">Crea</string><string name="close">Chiudi</string><string name="copy_public_key">Copia chiave pubblica</string><string name="copied">Copiato</string><string name="delete_key_warning">Eliminare questa chiave? Gli host associati passeranno a “main”.</string><string name="view_key_description">Visualizza chiave %1$s</string>
     <string name="test_section">Test</string><string name="logs_section">Registri</string>
+    <string name="menu_switch_theme">Cambia tema</string>
+    <string name="share_public_key">Condividi chiave pubblica</string>
+    <string name="public_key_subject">Chiave pubblica SSH ConnTest: %1$s</string>
 </resources>

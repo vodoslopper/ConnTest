@@ -52,4 +52,7 @@
     <string name="save">Сохранить</string><string name="delete">Удалить</string><string name="delete_host_warning">Удалить этот сервер?</string><string name="edit_host_description">Изменить сервер %1$s</string>
     <string name="add_key">Добавить ключ</string><string name="key_name">Уникальное имя ключа</string><string name="create">Создать</string><string name="close">Закрыть</string><string name="copy_public_key">Копировать открытый ключ</string><string name="copied">Скопировано</string><string name="delete_key_warning">Удалить этот ключ? Серверы с ним переключатся на «main».</string><string name="view_key_description">Просмотреть ключ %1$s</string>
     <string name="test_section">Проверка</string><string name="logs_section">Журнал</string>
+    <string name="menu_switch_theme">Сменить тему</string>
+    <string name="share_public_key">Поделиться открытым ключом</string>
+    <string name="public_key_subject">Открытый SSH-ключ ConnTest: %1$s</string>
 </resources>
