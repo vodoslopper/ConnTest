@@ -14,7 +14,7 @@
     <string name="regenerate_key_warning">Der alte Schlüssel wird dauerhaft ersetzt. Verbindungen schlagen fehl, bis der neue öffentliche Schlüssel zum SSH-Server hinzugefügt wurde.</string>
     <string name="key_generation_failed">Der Ed25519-Schlüssel konnte nicht generiert werden: %1$s</string>
     <string name="generated_key_required">Ein generierter Ed25519-Schlüssel ist erforderlich</string>
-    <string name="ssh_password">SSH-Passwort als Ausweichlösung (optional)</string>
+    <string name="ssh_password">SSH-Passwort (optional)</string>
     <string name="socks_port">Lokaler SOCKS-Port</string>
     <string name="accept_unknown_host">SSH-Hostschlüssel bei der ersten Verbindung vertrauen und speichern</string>
     <string name="connect">SSH mit Routing testen</string>

@@ -27,7 +27,7 @@ public final class ConnTestRoutingService extends VpnService {
     private static final String CHANNEL_ID = "conntest_ssh";
     private static final int NOTIFICATION_ID = 7;
 
-    private static volatile String status = "disconnected";
+    private static volatile RoutingStatus status = new RoutingStatus(R.string.status_disconnected);
     private static volatile boolean connected;
     private static volatile int localEndpointPort;
 
@@ -60,8 +60,8 @@ public final class ConnTestRoutingService extends VpnService {
         return new Intent(context, ConnTestRoutingService.class).setAction(ACTION_DISCONNECT);
     }
 
-    public static String getStatus() {
-        return status;
+    public static String getStatus(Context context) {
+        return status.resolve(context);
     }
 
     public static boolean isConnected() {
@@ -127,9 +127,9 @@ public final class ConnTestRoutingService extends VpnService {
             ConnectionLog.append("Starting connection worker");
             clearTunnelResources();
             try {
-                status = getString(R.string.status_connecting, user, host, sshPort);
-                ConnectionLog.append(status);
-                updateNotification(status);
+                String statusText = setStatus(R.string.status_connecting, user, host, sshPort);
+                ConnectionLog.append(statusText);
+                updateNotification(statusText);
 
                 sshEndpoint = new SshSocksEndpoint(
                         this,
@@ -159,15 +159,15 @@ public final class ConnTestRoutingService extends VpnService {
                 File config = writeTunnelConfig(socksPort);
                 TProxyService.start(config.getAbsolutePath(), routingInterface.getFd());
                 ConnectionLog.append("TUN-to-SOCKS bridge started");
-                status = getString(R.string.status_connected, host);
+                statusText = setStatus(R.string.status_connected, host);
                 localEndpointPort = socksPort;
                 connected = true;
-                ConnectionLog.append(status);
-                updateNotification(status);
+                ConnectionLog.append(statusText);
+                updateNotification(statusText);
             } catch (Exception exception) {
-                status = getString(R.string.status_failed, readableMessage(exception));
-                ConnectionLog.append(status);
-                updateNotification(status);
+                String statusText = setStatus(R.string.status_failed, readableMessage(exception));
+                ConnectionLog.append(statusText);
+                updateNotification(statusText);
                 clearTunnelResources();
                 stopForeground(true);
                 stopSelf();
@@ -209,10 +209,30 @@ public final class ConnTestRoutingService extends VpnService {
             clearTunnelResources();
             connected = false;
             localEndpointPort = 0;
-            status = "disconnected";
+            status = new RoutingStatus(R.string.status_disconnected);
             ConnectionLog.append("Disconnected");
             stopForeground(true);
             stopSelf();
+        }
+    }
+
+    private String setStatus(int resource, Object... arguments) {
+        RoutingStatus next = new RoutingStatus(resource, arguments);
+        status = next;
+        return next.resolve(this);
+    }
+
+    private static final class RoutingStatus {
+        private final int resource;
+        private final Object[] arguments;
+
+        private RoutingStatus(int resource, Object... arguments) {
+            this.resource = resource;
+            this.arguments = arguments;
+        }
+
+        private String resolve(Context context) {
+            return context.getString(resource, arguments);
         }
     }
 

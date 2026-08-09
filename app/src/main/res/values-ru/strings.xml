@@ -14,7 +14,7 @@
     <string name="regenerate_key_warning">Старый ключ будет безвозвратно заменён. Подключение не будет работать, пока новый открытый ключ не будет добавлен на SSH-сервер.</string>
     <string name="key_generation_failed">Не удалось создать ключ Ed25519: %1$s</string>
     <string name="generated_key_required">Необходим созданный ключ Ed25519</string>
-    <string name="ssh_password">Резервный пароль SSH (необязательно)</string>
+    <string name="ssh_password">Пароль SSH (если нужен)</string>
     <string name="socks_port">Локальный порт SOCKS</string>
     <string name="accept_unknown_host">Доверять и сохранять ключ SSH-сервера при первом подключении</string>
     <string name="connect">Проверить SSH с маршрутизацией</string>
@@ -48,7 +48,7 @@
     <string name="menu_home">Главная</string><string name="menu_hosts">Серверы</string><string name="menu_keys">Ключи</string>
     <string name="hosts_title">Серверы</string><string name="hosts_hint">Нажмите на сервер, чтобы изменить настройки подключения.</string>
     <string name="keys_title">SSH-ключи</string><string name="keys_hint">Имена ключей уникальны. Созданный ключ «main» всегда используется по умолчанию.</string>
-    <string name="add_host">Добавить сервер</string><string name="edit_host">Изменить сервер</string><string name="host_name_optional">Название сервера (необязательно)</string><string name="host_key">SSH-ключ</string><string name="choose_host">Выберите сервер</string><string name="no_hosts">Серверов нет — нажмите, чтобы добавить</string>
+    <string name="add_host">Добавить сервер</string><string name="edit_host">Изменить сервер</string><string name="host_name_optional">Название (необязательно)</string><string name="host_key">SSH-ключ</string><string name="choose_host">Выберите сервер</string><string name="no_hosts">Серверов нет — нажмите, чтобы добавить</string>
     <string name="save">Сохранить</string><string name="delete">Удалить</string><string name="delete_host_warning">Удалить этот сервер?</string><string name="edit_host_description">Изменить сервер %1$s</string>
     <string name="add_key">Добавить ключ</string><string name="key_name">Уникальное имя ключа</string><string name="create">Создать</string><string name="close">Закрыть</string><string name="copy_public_key">Копировать открытый ключ</string><string name="copied">Скопировано</string><string name="delete_key_warning">Удалить этот ключ? Серверы с ним переключатся на «main».</string><string name="view_key_description">Просмотреть ключ %1$s</string>
     <string name="test_section">Проверка</string><string name="logs_section">Журнал</string>

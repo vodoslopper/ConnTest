@@ -85,7 +85,8 @@ public final class MainActivity extends Activity {
     private final Runnable statusUpdater = new Runnable() {
         @Override public void run() {
             if (statusView != null) {
-                statusView.setText(getString(R.string.status_format, ConnTestRoutingService.getStatus()));
+                statusView.setText(getString(R.string.status_format,
+                        ConnTestRoutingService.getStatus(MainActivity.this)));
             }
             if (connectButton != null) {
                 connectButton.setText(ConnTestRoutingService.isConnected()
@@ -190,7 +191,7 @@ public final class MainActivity extends Activity {
         content.addView(connectButton, connectParams);
 
         statusView = text(0);
-        statusView.setText(getString(R.string.status_format, ConnTestRoutingService.getStatus()));
+        statusView.setText(getString(R.string.status_format, ConnTestRoutingService.getStatus(this)));
         statusView.setPadding(0, dp(12), 0, dp(24));
         content.addView(statusView);
 
