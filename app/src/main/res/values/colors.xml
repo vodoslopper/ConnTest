@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="connect_button_green">#00695C</color>
+    <color name="disconnect_button_green">#00695C</color>
+    <color name="disconnect_button_text">#FFFFFF</color>
+</resources>

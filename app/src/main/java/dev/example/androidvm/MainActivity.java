@@ -7,6 +7,7 @@ import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Context;
 import android.content.Intent;
+import android.content.res.ColorStateList;
 import android.content.res.Configuration;
 import android.graphics.Typeface;
 import android.net.Uri;
@@ -15,6 +16,7 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.text.InputType;
+import android.util.TypedValue;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
@@ -63,6 +65,8 @@ public final class MainActivity extends Activity {
     private TextView selectedHostView;
     private TextView statusView;
     private Button connectButton;
+    private ColorStateList defaultConnectButtonBackgroundTint;
+    private Boolean connectButtonConnected;
     private Button logsButton;
     private TextView logsView;
     private EditText testUrlField;
@@ -89,8 +93,7 @@ public final class MainActivity extends Activity {
                         ConnTestRoutingService.getStatus(MainActivity.this)));
             }
             if (connectButton != null) {
-                connectButton.setText(ConnTestRoutingService.isConnected()
-                        ? R.string.disconnect : R.string.connect);
+                updateConnectButton();
             }
             if (logsView != null && logsView.getVisibility() == View.VISIBLE) updateLogs();
             statusHandler.postDelayed(this, 500);
@@ -180,7 +183,8 @@ public final class MainActivity extends Activity {
         refreshSelectedHost();
 
         connectButton = new Button(this);
-        connectButton.setText(ConnTestRoutingService.isConnected() ? R.string.disconnect : R.string.connect);
+        defaultConnectButtonBackgroundTint = themeColorStateList(android.R.attr.colorButtonNormal);
+        connectButtonConnected = null;
         connectButton.setTextSize(22);
         connectButton.setMinHeight(dp(76));
         connectButton.setOnClickListener(view -> {
@@ -189,6 +193,7 @@ public final class MainActivity extends Activity {
         LinearLayout.LayoutParams connectParams = matchWrap();
         connectParams.setMargins(0, dp(20), 0, 0);
         content.addView(connectButton, connectParams);
+        updateConnectButton();
 
         statusView = text(0);
         statusView.setText(getString(R.string.status_format, ConnTestRoutingService.getStatus(this)));
@@ -226,6 +231,29 @@ public final class MainActivity extends Activity {
         logsView.setVisibility(View.GONE);
         content.addView(logsView);
         setScrollableContent(content);
+    }
+
+    private void updateConnectButton() {
+        boolean connected = ConnTestRoutingService.isConnected();
+        if (connectButtonConnected != null && connectButtonConnected == connected) return;
+        connectButtonConnected = connected;
+        connectButton.setText(connected ? R.string.disconnect : R.string.connect);
+        if (connected) {
+            connectButton.setBackgroundTintList(ColorStateList.valueOf(
+                    getColor(R.color.disconnect_button_green)));
+            connectButton.setTextColor(getColor(R.color.disconnect_button_text));
+        } else {
+            connectButton.setBackgroundTintList(defaultConnectButtonBackgroundTint);
+            connectButton.setTextColor(getColor(R.color.connect_button_green));
+        }
+    }
+
+    private ColorStateList themeColorStateList(int attribute) {
+        TypedValue value = new TypedValue();
+        getTheme().resolveAttribute(attribute, value, true);
+        return value.resourceId != 0
+                ? getColorStateList(value.resourceId)
+                : ColorStateList.valueOf(value.data);
     }
 
     private void showHostsPage() {
