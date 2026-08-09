@@ -517,17 +517,37 @@ public final class MainActivity extends Activity {
     }
 
     private LinearLayout pageLayout() {
-        boolean dark = (getResources().getConfiguration().uiMode
-                & Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES;
-        int topPadding = dark ? 116 : 20;
-        LinearLayout content = new LinearLayout(this); content.setOrientation(LinearLayout.VERTICAL); content.setPadding(dp(20), dp(topPadding), dp(20), dp(28)); return content;
+        LinearLayout content = new LinearLayout(this);
+        content.setOrientation(LinearLayout.VERTICAL);
+        content.setPadding(dp(20), dp(20), dp(20), dp(28));
+        return content;
     }
 
     private LinearLayout dialogLayout() {
         LinearLayout content = new LinearLayout(this); content.setOrientation(LinearLayout.VERTICAL); content.setPadding(dp(20), 0, dp(20), dp(8)); return content;
     }
 
-    private void setScrollableContent(LinearLayout content) { ScrollView scroll = new ScrollView(this); scroll.addView(content); setContentView(scroll); }
+    private void setScrollableContent(LinearLayout content) {
+        ScrollView scroll = new ScrollView(this);
+        scroll.addView(content);
+        setContentView(scroll);
+        content.post(() -> applyActionBarInset(content));
+    }
+
+    private void applyActionBarInset(LinearLayout content) {
+        int actionBarId = getResources().getIdentifier("action_bar_container", "id", "android");
+        View actionBar = actionBarId == 0 ? null : getWindow().getDecorView().findViewById(actionBarId);
+        if (actionBar == null || actionBar.getVisibility() != View.VISIBLE) {
+            return;
+        }
+        int[] actionBarLocation = new int[2];
+        int[] contentLocation = new int[2];
+        actionBar.getLocationOnScreen(actionBarLocation);
+        content.getLocationOnScreen(contentLocation);
+        int overlap = Math.max(0,
+                actionBarLocation[1] + actionBar.getHeight() - contentLocation[1]);
+        content.setPadding(dp(20), dp(20) + overlap, dp(20), dp(28));
+    }
 
     private TextView heading(int resource) { TextView view = text(resource); view.setTextSize(28); view.setTypeface(Typeface.DEFAULT, Typeface.BOLD); return view; }
 
