@@ -16,7 +16,7 @@
     <string name="generated_key_required">Ein generierter Ed25519-Schlüssel ist erforderlich</string>
     <string name="ssh_password">SSH-Passwort als Ausweichlösung (optional)</string>
     <string name="socks_port">Lokaler SOCKS-Port</string>
-    <string name="accept_unknown_host">Nur zum Testen: Unbekannten SSH-Hostschlüssel akzeptieren (-o StrictHostKeyChecking=no)</string>
+    <string name="accept_unknown_host">SSH-Hostschlüssel bei der ersten Verbindung vertrauen und speichern</string>
     <string name="connect">SSH mit Routing testen</string>
     <string name="disconnect">Verbindung trennen</string>
     <string name="status_format">Status: %1$s</string>

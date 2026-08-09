@@ -24,8 +24,8 @@ dynamic SOCKS5 endpoint. The ready-to-install, release-signed APK is
 3. Copy the Ed25519 public key shown by ConnTest into the SSH account's
    `~/.ssh/authorized_keys`. The corresponding unencrypted private key is
    generated once and kept in the app's private internal storage.
-4. Leave **accept unknown SSH host key** enabled only for a disposable test
-   server. Disable it when testing strict host-key rejection.
+4. Leave **trust and pin this SSH host key** enabled for the first connection.
+   ConnTest rejects a changed key and permits strict reconnects to the pinned key.
 5. Tap **Test SSH with routing** and approve Android's connection request.
 6. Open a browser or another app to test its TCP connection through SSH.
 7. Return to ConnTest and tap **Disconnect** when the test is complete. Use
@@ -67,8 +67,8 @@ this test build.
 
 ## SSH test security
 
-The **accept unknown SSH host key** option is equivalent to
-`-o StrictHostKeyChecking=no`. It is useful for short-lived connection tests but
+The **trust and pin this SSH host key** option performs trust on first use. It is
+useful for short-lived connection tests but
 does not authenticate the server and is unsafe for sensitive traffic.
 
 ConnTest is a diagnostic example, not a production traffic-routing tool. Use
@@ -118,13 +118,13 @@ release-signed artifact:
 
 ```sh
 git submodule update --init --recursive
-vml rsync-to --archive --check --sources ./ \
-  --destination /root/ConnTest/ -n android-builder
+vml rsync-to --archive --check --user androidbuild --sources ./ \
+  --destination /home/androidbuild/ConnTest/ -n android-builder
 vml ssh --check --cmd \
-  'cd /root/ConnTest && ./scripts/provision-android-builder.sh' \
+  'cd /home/androidbuild/ConnTest && ./scripts/provision-android-builder.sh' \
   -n android-builder
 vml ssh --check --cmd \
-  'cd /root/ConnTest && ./scripts/build-release.sh' \
+  'cd /home/androidbuild/ConnTest && ./scripts/build-release.sh' \
   -n android-builder
 ```
 

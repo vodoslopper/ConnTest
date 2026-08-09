@@ -16,7 +16,7 @@
     <string name="generated_key_required">A generated Ed25519 key is required</string>
     <string name="ssh_password">SSH password fallback (optional)</string>
     <string name="socks_port">Local SOCKS port</string>
-    <string name="accept_unknown_host">Testing only: accept an unknown SSH host key (-o StrictHostKeyChecking=no)</string>
+    <string name="accept_unknown_host">Trust and pin this SSH host key on first connection</string>
     <string name="connect">Test SSH with routing</string>
     <string name="disconnect">Disconnect</string>
     <string name="status_format">Status: %1$s</string>

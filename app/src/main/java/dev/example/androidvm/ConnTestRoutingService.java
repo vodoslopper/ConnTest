@@ -108,8 +108,9 @@ public final class ConnTestRoutingService extends VpnService {
 
     @Override
     public void onDestroy() {
-        stopTunnel();
         worker.shutdownNow();
+        Thread teardown = new Thread(this::stopTunnel, "ConnTest-routing-teardown");
+        teardown.start();
         super.onDestroy();
     }
 

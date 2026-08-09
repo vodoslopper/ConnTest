@@ -52,9 +52,22 @@ final class SshIdentityStore {
     static synchronized SshIdentityStore regenerate(Context context)
             throws IOException, JSchException {
         File privateKeyFile = new File(context.getFilesDir(), PRIVATE_KEY_FILE);
-        if (privateKeyFile.exists() && !privateKeyFile.delete()) {
-            throw new IOException("could not replace the existing SSH identity");
+        File replacement = new File(context.getFilesDir(), PRIVATE_KEY_FILE + ".replacement");
+        File backup = new File(context.getFilesDir(), PRIVATE_KEY_FILE + ".backup");
+        deleteIfPresent(replacement, "could not clear an incomplete replacement identity");
+        deleteIfPresent(backup, "could not clear an incomplete identity backup");
+        writeKey(replacement);
+        if (privateKeyFile.exists() && !privateKeyFile.renameTo(backup)) {
+            replacement.delete();
+            throw new IOException("could not preserve the existing SSH identity");
         }
+        if (!replacement.renameTo(privateKeyFile)) {
+            if (backup.exists()) {
+                backup.renameTo(privateKeyFile);
+            }
+            throw new IOException("could not save the replacement SSH identity");
+        }
+        backup.delete();
         return loadOrCreate(context);
     }
 
@@ -81,24 +94,32 @@ final class SshIdentityStore {
 
     private static void generate(File destination) throws IOException, JSchException {
         File temporary = new File(destination.getParentFile(), PRIVATE_KEY_FILE + ".new");
-        if (temporary.exists() && !temporary.delete()) {
-            throw new IOException("could not clear an incomplete SSH identity");
+        deleteIfPresent(temporary, "could not clear an incomplete SSH identity");
+        writeKey(temporary);
+        if (!temporary.renameTo(destination)) {
+            temporary.delete();
+            throw new IOException("could not save the generated SSH identity");
         }
+    }
+
+    private static void writeKey(File destination) throws IOException, JSchException {
         KeyPair keyPair = KeyPair.genKeyPair(new JSch(), KeyPair.ED25519);
-        try (FileOutputStream output = new FileOutputStream(temporary, false)) {
+        try (FileOutputStream output = new FileOutputStream(destination, false)) {
             keyPair.setPublicKeyComment(COMMENT);
             keyPair.writeOpenSSHv1PrivateKey(output, (byte[]) null);
             output.getFD().sync();
         } finally {
             keyPair.dispose();
         }
-        if (!temporary.renameTo(destination)) {
-            temporary.delete();
-            throw new IOException("could not save the generated SSH identity");
-        }
         destination.setReadable(false, false);
         destination.setWritable(false, false);
         destination.setReadable(true, true);
         destination.setWritable(true, true);
+    }
+
+    private static void deleteIfPresent(File file, String message) throws IOException {
+        if (file.exists() && !file.delete()) {
+            throw new IOException(message);
+        }
     }
 }

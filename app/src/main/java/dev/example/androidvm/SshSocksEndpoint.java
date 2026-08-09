@@ -1,13 +1,19 @@
 package dev.example.androidvm;
 
+import android.content.Context;
+import android.content.SharedPreferences;
 import android.net.VpnService;
+import android.util.Base64;
 
 import com.jcraft.jsch.ChannelDirectTCPIP;
 import com.jcraft.jsch.JSch;
 import com.jcraft.jsch.JSchException;
+import com.jcraft.jsch.HostKey;
+import com.jcraft.jsch.HostKeyRepository;
 import com.jcraft.jsch.Logger;
 import com.jcraft.jsch.Session;
 import com.jcraft.jsch.SocketFactory;
+import com.jcraft.jsch.UserInfo;
 
 import java.io.EOFException;
 import java.io.IOException;
@@ -25,6 +31,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -70,6 +77,7 @@ final class SshSocksEndpoint implements AutoCloseable {
     void start() throws IOException, JSchException {
         JSch jsch = new JSch();
         jsch.setInstanceLogger(new ConnectionLogger());
+        jsch.setHostKeyRepository(new PersistentHostKeys(routingService, acceptUnknownHost));
         if (privateKey != null && privateKey.length > 0) {
             try {
                 jsch.addIdentity("ConnTest generated Ed25519 key", privateKey, null, null);
@@ -82,9 +90,7 @@ final class SshSocksEndpoint implements AutoCloseable {
         if (password != null && !password.isEmpty()) {
             session.setPassword(password);
         }
-        session.setConfig(
-                "StrictHostKeyChecking",
-                acceptUnknownHost ? "no" : "yes");
+        session.setConfig("StrictHostKeyChecking", "yes");
         session.setConfig(
                 "PreferredAuthentications",
                 "publickey,password,keyboard-interactive");
@@ -162,18 +168,19 @@ final class SshSocksEndpoint implements AutoCloseable {
             sendReply(clientOutput, 0x00, "0.0.0.0", 0);
             established = true;
 
-            final ChannelDirectTCPIP activeChannel = channel;
+            CountDownLatch remoteFinished = new CountDownLatch(1);
             clients.execute(() -> {
                 try {
                     copy(remoteInput, clientOutput);
                 } catch (IOException ignored) {
-                    // The opposite direction closes the channel.
+                    // Teardown closes both sides.
                 } finally {
-                    activeChannel.disconnect();
-                    closeQuietly(socket);
+                    remoteFinished.countDown();
                 }
             });
             copy(clientInput, remoteOutput);
+            remoteOutput.close();
+            remoteFinished.await();
         } catch (Exception exception) {
             ConnectionLog.append("TCP forwarding failed: " + readableMessage(exception));
             if (!established) {
@@ -328,7 +335,7 @@ final class SshSocksEndpoint implements AutoCloseable {
         return new SocksRequest(command, targetHost, targetPort);
     }
 
-    private static UdpRequest parseUdpRequest(byte[] packet) throws IOException {
+    static UdpRequest parseUdpRequest(byte[] packet) throws IOException {
         if (packet.length < 10 || packet[0] != 0 || packet[1] != 0 || packet[2] != 0) {
             throw new IOException("Invalid SOCKS5 UDP packet");
         }
@@ -396,7 +403,7 @@ final class SshSocksEndpoint implements AutoCloseable {
         }
     }
 
-    private static int readByte(InputStream input) throws IOException {
+    static int readByte(InputStream input) throws IOException {
         int value = input.read();
         if (value < 0) {
             throw new EOFException("Unexpected end of SOCKS request");
@@ -404,7 +411,7 @@ final class SshSocksEndpoint implements AutoCloseable {
         return value;
     }
 
-    private static byte[] readBytes(InputStream input, int length) throws IOException {
+    static byte[] readBytes(InputStream input, int length) throws IOException {
         byte[] bytes = new byte[length];
         int offset = 0;
         while (offset < length) {
@@ -495,7 +502,7 @@ final class SshSocksEndpoint implements AutoCloseable {
         }
     }
 
-    private static final class UdpRequest {
+    static final class UdpRequest {
         final String host;
         final int port;
         final byte[] header;
@@ -506,6 +513,64 @@ final class SshSocksEndpoint implements AutoCloseable {
             this.port = port;
             this.header = header;
             this.payload = payload;
+        }
+    }
+
+    private static final class PersistentHostKeys implements HostKeyRepository {
+        private static final String PREFERENCES = "ssh-host-keys";
+        private final SharedPreferences preferences;
+        private final boolean trustUnknown;
+
+        PersistentHostKeys(Context context, boolean trustUnknown) {
+            this.preferences = context.getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE);
+            this.trustUnknown = trustUnknown;
+        }
+
+        @Override
+        public int check(String host, byte[] key) {
+            String encoded = Base64.encodeToString(key, Base64.NO_WRAP);
+            String stored = preferences.getString(host, null);
+            if (stored == null) {
+                if (!trustUnknown) {
+                    return NOT_INCLUDED;
+                }
+                if (!preferences.edit().putString(host, encoded).commit()) {
+                    return NOT_INCLUDED;
+                }
+                ConnectionLog.append("Trusted and pinned first SSH host key for " + host);
+                return OK;
+            }
+            return stored.equals(encoded) ? OK : CHANGED;
+        }
+
+        @Override
+        public void add(HostKey hostKey, UserInfo userInfo) {
+            preferences.edit().putString(hostKey.getHost(), hostKey.getKey()).apply();
+        }
+
+        @Override
+        public void remove(String host, String type) {
+            preferences.edit().remove(host).apply();
+        }
+
+        @Override
+        public void remove(String host, String type, byte[] key) {
+            remove(host, type);
+        }
+
+        @Override
+        public String getKnownHostsRepositoryID() {
+            return "ConnTest persistent host-key pins";
+        }
+
+        @Override
+        public HostKey[] getHostKey() {
+            return new HostKey[0];
+        }
+
+        @Override
+        public HostKey[] getHostKey(String host, String type) {
+            return new HostKey[0];
         }
     }
 

@@ -16,7 +16,7 @@
     <string name="generated_key_required">Необходим созданный ключ Ed25519</string>
     <string name="ssh_password">Резервный пароль SSH (необязательно)</string>
     <string name="socks_port">Локальный порт SOCKS</string>
-    <string name="accept_unknown_host">Только для тестирования: принимать неизвестный ключ SSH-сервера (-o StrictHostKeyChecking=no)</string>
+    <string name="accept_unknown_host">Доверять и сохранять ключ SSH-сервера при первом подключении</string>
     <string name="connect">Проверить SSH с маршрутизацией</string>
     <string name="disconnect">Отключиться</string>
     <string name="status_format">Состояние: %1$s</string>
