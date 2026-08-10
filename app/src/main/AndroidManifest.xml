@@ -7,8 +7,9 @@
 
     <application
         android:allowBackup="false"
-        android:icon="@drawable/ic_conntest"
+        android:icon="@mipmap/ic_conntest"
         android:label="@string/app_name"
+        android:roundIcon="@mipmap/ic_conntest_round"
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
         <provider
