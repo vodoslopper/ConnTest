@@ -45,6 +45,7 @@ import java.net.Proxy;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.ArrayList;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -292,18 +293,37 @@ public final class MainActivity extends Activity {
         CheckBox acceptUnknown = new CheckBox(this);
         acceptUnknown.setText(R.string.accept_unknown_host);
         Spinner keys = new Spinner(this);
+        Spinner jumpHosts = new Spinner(this);
         List<String> keyNames;
         try { keyNames = SshIdentityStore.names(this); }
         catch (IOException | JSchException exception) { showError(readableMessage(exception)); return; }
         keys.setAdapter(new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, keyNames));
+        List<HostStore.Host> jumpCandidates = new ArrayList<>();
+        List<String> jumpLabels = new ArrayList<>();
+        jumpLabels.add(getString(R.string.jump_host_direct));
+        for (HostStore.Host candidate : hostStore.all()) {
+            if (!candidate.id.equals(host.id)) {
+                jumpCandidates.add(candidate);
+                jumpLabels.add(candidate.label());
+            }
+        }
+        jumpHosts.setAdapter(new ArrayAdapter<>(this,
+                android.R.layout.simple_spinner_dropdown_item, jumpLabels));
         name.setText(host.name); address.setText(host.address); sshPort.setText(Integer.toString(host.sshPort));
         user.setText(host.user); password.setText(host.password); socksPort.setText(Integer.toString(host.socksPort));
         acceptUnknown.setChecked(host.acceptUnknown);
         int keyIndex = keyNames.indexOf(host.keyName);
         keys.setSelection(Math.max(0, keyIndex));
+        int jumpIndex = 0;
+        for (int i = 0; i < jumpCandidates.size(); i++) {
+            if (jumpCandidates.get(i).id.equals(host.jumpHostId)) jumpIndex = i + 1;
+        }
         form.addView(name); form.addView(address); form.addView(sshPort); form.addView(user); form.addView(password);
         TextView keyLabel = text(R.string.host_key); keyLabel.setPadding(0, dp(10), 0, 0); form.addView(keyLabel);
-        form.addView(keys); form.addView(socksPort); form.addView(acceptUnknown);
+        form.addView(keys);
+        TextView jumpLabel = text(R.string.jump_host); jumpLabel.setPadding(0, dp(10), 0, 0); form.addView(jumpLabel);
+        form.addView(jumpHosts); jumpHosts.setSelection(jumpIndex);
+        form.addView(socksPort); form.addView(acceptUnknown);
         ScrollView scroll = new ScrollView(this); scroll.addView(form);
         AlertDialog.Builder builder = new AlertDialog.Builder(this)
                 .setTitle(existing == null ? R.string.add_host : R.string.edit_host)
@@ -323,6 +343,9 @@ public final class MainActivity extends Activity {
                     host.socksPort = parsePort(socksPort.getText().toString(), getString(R.string.socks_port));
                     host.password = password.getText().toString(); host.acceptUnknown = acceptUnknown.isChecked();
                     host.keyName = (String) keys.getSelectedItem();
+                    int selectedJump = jumpHosts.getSelectedItemPosition();
+                    host.jumpHostId = selectedJump == 0 ? ""
+                            : jumpCandidates.get(selectedJump - 1).id;
                     hostStore.save(host); dialog.dismiss(); showHostsPage();
                 } catch (IllegalArgumentException exception) { showError(exception.getMessage()); }
             });
@@ -436,10 +459,14 @@ public final class MainActivity extends Activity {
         if (host == null) { showHostDialog(null); return; }
         try {
             SshIdentityStore identity = SshIdentityStore.load(this, host.keyName);
+            HostStore.Host jump = hostStore.find(host.jumpHostId);
+            SshIdentityStore jumpIdentity = jump == null ? null
+                    : SshIdentityStore.load(this, jump.keyName);
             ConnectionLog.clear();
             ConnectionLog.append("Connection requested for " + host.user + "@" + host.address + ":" + host.sshPort + " using key '" + host.keyName + "'");
             pendingConnectIntent = ConnTestRoutingService.connectIntent(this, host.address, host.sshPort,
-                    host.user, identity.readPrivateKey(), host.password, host.socksPort, host.acceptUnknown);
+                    host.user, identity.readPrivateKey(), host.password, host.socksPort,
+                    host.acceptUnknown, jump, jumpIdentity == null ? null : jumpIdentity.readPrivateKey());
             Intent permissionIntent = VpnService.prepare(this);
             if (permissionIntent == null) { startRoutingService(pendingConnectIntent); pendingConnectIntent = null; }
             else { ConnectionLog.append("Waiting for Android routing permission"); startActivityForResult(permissionIntent, ROUTING_REQUEST); }

@@ -44,8 +44,10 @@ public final class ConnTestRoutingService extends VpnService {
             byte[] privateKey,
             String password,
             int socksPort,
-            boolean acceptUnknownHost) {
-        return new Intent(context, ConnTestRoutingService.class)
+            boolean acceptUnknownHost,
+            HostStore.Host jumpHost,
+            byte[] jumpPrivateKey) {
+        Intent intent = new Intent(context, ConnTestRoutingService.class)
                 .setAction(ACTION_CONNECT)
                 .putExtra("host", host)
                 .putExtra("sshPort", sshPort)
@@ -54,6 +56,15 @@ public final class ConnTestRoutingService extends VpnService {
                 .putExtra("password", password)
                 .putExtra("socksPort", socksPort)
                 .putExtra("acceptUnknownHost", acceptUnknownHost);
+        if (jumpHost != null) {
+            intent.putExtra("jumpHost", jumpHost.address)
+                    .putExtra("jumpPort", jumpHost.sshPort)
+                    .putExtra("jumpUser", jumpHost.user)
+                    .putExtra("jumpPrivateKey", jumpPrivateKey)
+                    .putExtra("jumpPassword", jumpHost.password)
+                    .putExtra("jumpAcceptUnknownHost", jumpHost.acceptUnknown);
+        }
+        return intent;
     }
 
     public static Intent disconnectIntent(Context context) {
@@ -88,6 +99,15 @@ public final class ConnTestRoutingService extends VpnService {
             final int socksPort = intent.getIntExtra("socksPort", 1080);
             final boolean acceptUnknownHost =
                     intent.getBooleanExtra("acceptUnknownHost", false);
+            final String jumpHost = intent.getStringExtra("jumpHost");
+            final SshSocksEndpoint.JumpHost jump = jumpHost == null ? null
+                    : new SshSocksEndpoint.JumpHost(
+                            jumpHost,
+                            intent.getIntExtra("jumpPort", 22),
+                            intent.getStringExtra("jumpUser"),
+                            intent.getByteArrayExtra("jumpPrivateKey"),
+                            intent.getStringExtra("jumpPassword"),
+                            intent.getBooleanExtra("jumpAcceptUnknownHost", false));
             worker.execute(() -> connect(
                     host,
                     sshPort,
@@ -95,7 +115,8 @@ public final class ConnTestRoutingService extends VpnService {
                     privateKey,
                     password,
                     socksPort,
-                    acceptUnknownHost));
+                    acceptUnknownHost,
+                    jump));
         }
         return Service.START_NOT_STICKY;
     }
@@ -121,7 +142,8 @@ public final class ConnTestRoutingService extends VpnService {
             byte[] privateKey,
             String password,
             int socksPort,
-            boolean acceptUnknownHost) {
+            boolean acceptUnknownHost,
+            SshSocksEndpoint.JumpHost jumpHost) {
         synchronized (tunnelLock) {
             connected = false;
             ConnectionLog.append("Starting connection worker");
@@ -139,7 +161,8 @@ public final class ConnTestRoutingService extends VpnService {
                         privateKey,
                         password == null ? "" : password,
                         socksPort,
-                        acceptUnknownHost);
+                        acceptUnknownHost,
+                        jumpHost);
                 sshEndpoint.start();
                 ConnectionLog.append("SSH authentication completed; SOCKS listener is ready");
 

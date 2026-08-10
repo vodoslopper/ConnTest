@@ -46,12 +46,15 @@ final class SshSocksEndpoint implements AutoCloseable {
     private final String password;
     private final int socksPort;
     private final boolean acceptUnknownHost;
+    private final JumpHost jumpHost;
     private final ExecutorService clients = Executors.newCachedThreadPool();
     private final Set<Socket> clientSockets = Collections.newSetFromMap(
             new ConcurrentHashMap<Socket, Boolean>());
 
     private volatile boolean running;
     private Session session;
+    private Session jumpSession;
+    private int jumpForwardPort;
     private ServerSocket serverSocket;
     private Thread acceptThread;
 
@@ -63,7 +66,8 @@ final class SshSocksEndpoint implements AutoCloseable {
             byte[] privateKey,
             String password,
             int socksPort,
-            boolean acceptUnknownHost) {
+            boolean acceptUnknownHost,
+            JumpHost jumpHost) {
         this.routingService = routingService;
         this.host = host;
         this.sshPort = sshPort;
@@ -72,9 +76,30 @@ final class SshSocksEndpoint implements AutoCloseable {
         this.password = password;
         this.socksPort = socksPort;
         this.acceptUnknownHost = acceptUnknownHost;
+        this.jumpHost = jumpHost;
+    }
+
+    static final class JumpHost {
+        final String host;
+        final int port;
+        final String user;
+        final byte[] privateKey;
+        final String password;
+        final boolean acceptUnknownHost;
+
+        JumpHost(String host, int port, String user, byte[] privateKey, String password,
+                boolean acceptUnknownHost) {
+            this.host = host;
+            this.port = port;
+            this.user = user;
+            this.privateKey = privateKey;
+            this.password = password;
+            this.acceptUnknownHost = acceptUnknownHost;
+        }
     }
 
     void start() throws IOException, JSchException {
+        if (jumpHost != null) connectJumpHost();
         JSch jsch = new JSch();
         jsch.setInstanceLogger(new ConnectionLogger());
         jsch.setHostKeyRepository(new PersistentHostKeys(routingService, acceptUnknownHost));
@@ -96,8 +121,13 @@ final class SshSocksEndpoint implements AutoCloseable {
                 "publickey,password,keyboard-interactive");
         session.setServerAliveInterval(15_000);
         session.setServerAliveCountMax(3);
-        session.setSocketFactory(new ProtectedSocketFactory(routingService));
-        ConnectionLog.append("Opening protected SSH transport socket");
+        if (jumpSession == null) {
+            session.setSocketFactory(new ProtectedSocketFactory(routingService));
+            ConnectionLog.append("Opening protected SSH transport socket");
+        } else {
+            session.setSocketFactory(new ForwardedSocketFactory(jumpForwardPort));
+            ConnectionLog.append("Opening destination SSH transport through jump host");
+        }
         session.connect(CONNECT_TIMEOUT_MS);
 
         serverSocket = new ServerSocket();
@@ -107,6 +137,57 @@ final class SshSocksEndpoint implements AutoCloseable {
         running = true;
         acceptThread = new Thread(this::acceptLoop, "ConnTest-SOCKS-accept");
         acceptThread.start();
+    }
+
+    private void connectJumpHost() throws JSchException {
+        JSch jsch = new JSch();
+        jsch.setInstanceLogger(new ConnectionLogger());
+        jsch.setHostKeyRepository(
+                new PersistentHostKeys(routingService, jumpHost.acceptUnknownHost));
+        if (jumpHost.privateKey != null && jumpHost.privateKey.length > 0) {
+            try {
+                jsch.addIdentity("ConnTest jump-host Ed25519 key",
+                        jumpHost.privateKey, null, null);
+            } finally {
+                Arrays.fill(jumpHost.privateKey, (byte) 0);
+            }
+        }
+        jumpSession = jsch.getSession(jumpHost.user, jumpHost.host, jumpHost.port);
+        if (jumpHost.password != null && !jumpHost.password.isEmpty()) {
+            jumpSession.setPassword(jumpHost.password);
+        }
+        jumpSession.setConfig("StrictHostKeyChecking", "yes");
+        jumpSession.setConfig("PreferredAuthentications",
+                "publickey,password,keyboard-interactive");
+        jumpSession.setServerAliveInterval(15_000);
+        jumpSession.setServerAliveCountMax(3);
+        jumpSession.setSocketFactory(new ProtectedSocketFactory(routingService));
+        ConnectionLog.append("Connecting to jump host " + jumpHost.user + "@"
+                + jumpHost.host + ":" + jumpHost.port);
+        jumpSession.connect(CONNECT_TIMEOUT_MS);
+        jumpForwardPort = jumpSession.setPortForwardingL("127.0.0.1", 0, host, sshPort);
+        ConnectionLog.append("Jump host connected; forwarding destination SSH transport");
+    }
+
+    private static final class ForwardedSocketFactory implements SocketFactory {
+        private final int port;
+
+        ForwardedSocketFactory(int port) { this.port = port; }
+
+        @Override public Socket createSocket(String ignoredHost, int ignoredPort)
+                throws IOException {
+            Socket socket = new Socket();
+            socket.connect(new InetSocketAddress("127.0.0.1", port), CONNECT_TIMEOUT_MS);
+            return socket;
+        }
+
+        @Override public InputStream getInputStream(Socket socket) throws IOException {
+            return socket.getInputStream();
+        }
+
+        @Override public OutputStream getOutputStream(Socket socket) throws IOException {
+            return socket.getOutputStream();
+        }
     }
 
     private void acceptLoop() {
@@ -443,6 +524,10 @@ final class SshSocksEndpoint implements AutoCloseable {
         if (session != null) {
             session.disconnect();
             session = null;
+        }
+        if (jumpSession != null) {
+            jumpSession.disconnect();
+            jumpSession = null;
         }
     }
 

@@ -27,6 +27,7 @@ final class HostStore {
         int socksPort = 1080;
         boolean acceptUnknown = true;
         String keyName = SshIdentityStore.DEFAULT_NAME;
+        String jumpHostId = "";
 
         String label() {
             return name.trim().isEmpty() ? address : name + " — " + address;
@@ -36,7 +37,7 @@ final class HostStore {
             return new JSONObject().put("id", id).put("name", name).put("address", address)
                     .put("sshPort", sshPort).put("user", user).put("password", password)
                     .put("socksPort", socksPort).put("acceptUnknown", acceptUnknown)
-                    .put("keyName", keyName);
+                    .put("keyName", keyName).put("jumpHostId", jumpHostId);
         }
 
         static Host fromJson(JSONObject json) {
@@ -50,6 +51,7 @@ final class HostStore {
             host.socksPort = json.optInt("socksPort", 1080);
             host.acceptUnknown = json.optBoolean("acceptUnknown", true);
             host.keyName = json.optString("keyName", SshIdentityStore.DEFAULT_NAME);
+            host.jumpHostId = json.optString("jumpHostId");
             return host;
         }
     }
@@ -73,6 +75,14 @@ final class HostStore {
             if (host.id.equals(id)) return host;
         }
         return hosts.isEmpty() ? null : hosts.get(0);
+    }
+
+    Host find(String id) {
+        if (id == null || id.isEmpty()) return null;
+        for (Host host : hosts) {
+            if (host.id.equals(id)) return host;
+        }
+        return null;
     }
 
     void select(Host host) {
@@ -99,6 +109,9 @@ final class HostStore {
                 iterator.remove();
                 break;
             }
+        }
+        for (Host remaining : hosts) {
+            if (host.id.equals(remaining.jumpHostId)) remaining.jumpHostId = "";
         }
         Host selected = selected();
         preferences.edit().putString(SELECTED, selected == null ? "" : selected.id).apply();

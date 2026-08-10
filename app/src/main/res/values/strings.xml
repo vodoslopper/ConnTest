@@ -56,6 +56,8 @@
     <string name="edit_host">Edit host</string>
     <string name="host_name_optional">Host name (optional)</string>
     <string name="host_key">SSH key</string>
+    <string name="jump_host">Jump host</string>
+    <string name="jump_host_direct">Direct connection (no jump host)</string>
     <string name="choose_host">Choose host</string>
     <string name="no_hosts">No hosts yet — tap to add one</string>
     <string name="save">Save</string>
