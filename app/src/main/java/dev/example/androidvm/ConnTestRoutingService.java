@@ -34,7 +34,7 @@ public final class ConnTestRoutingService extends VpnService {
     private final ExecutorService worker = Executors.newSingleThreadExecutor();
     private final Object tunnelLock = new Object();
     private ParcelFileDescriptor routingInterface;
-    private SshSocksEndpoint sshEndpoint;
+    private volatile SshSocksEndpoint sshEndpoint;
 
     public static Intent connectIntent(
             Context context,
@@ -87,7 +87,7 @@ public final class ConnTestRoutingService extends VpnService {
     public int onStartCommand(Intent intent, int flags, int startId) {
         startAsForeground(getString(R.string.status_starting));
         if (intent == null || ACTION_DISCONNECT.equals(intent.getAction())) {
-            worker.execute(this::stopTunnel);
+            requestStopTunnel();
             return Service.START_NOT_STICKY;
         }
         if (ACTION_CONNECT.equals(intent.getAction())) {
@@ -123,7 +123,7 @@ public final class ConnTestRoutingService extends VpnService {
 
     @Override
     public void onRevoke() {
-        worker.execute(this::stopTunnel);
+        requestStopTunnel();
         super.onRevoke();
     }
 
@@ -239,6 +239,12 @@ public final class ConnTestRoutingService extends VpnService {
         }
     }
 
+    private void requestStopTunnel() {
+        SshSocksEndpoint endpoint = sshEndpoint;
+        if (endpoint != null) endpoint.close();
+        worker.execute(this::stopTunnel);
+    }
+
     private String setStatus(int resource, Object... arguments) {
         RoutingStatus next = new RoutingStatus(resource, arguments);
         status = next;
@@ -301,10 +307,15 @@ public final class ConnTestRoutingService extends VpnService {
 
     private Notification notification(String text) {
         Intent activityIntent = new Intent(this, MainActivity.class);
-        PendingIntent pendingIntent = PendingIntent.getActivity(
+        PendingIntent activityPendingIntent = PendingIntent.getActivity(
                 this,
                 0,
                 activityIntent,
+                PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
+        PendingIntent disconnectPendingIntent = PendingIntent.getService(
+                this,
+                1,
+                disconnectIntent(this),
                 PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
         Notification.Builder builder = Build.VERSION.SDK_INT >= 26
                 ? new Notification.Builder(this, CHANNEL_ID)
@@ -313,7 +324,12 @@ public final class ConnTestRoutingService extends VpnService {
                 .setSmallIcon(android.R.drawable.stat_sys_warning)
                 .setContentTitle(getString(R.string.notification_title))
                 .setContentText(text)
-                .setContentIntent(pendingIntent)
+                .setStyle(new Notification.BigTextStyle().bigText(text))
+                .setContentIntent(activityPendingIntent)
+                .addAction(
+                        android.R.drawable.ic_menu_close_clear_cancel,
+                        getString(R.string.disconnect),
+                        disconnectPendingIntent)
                 .setOngoing(true)
                 .build();
     }
