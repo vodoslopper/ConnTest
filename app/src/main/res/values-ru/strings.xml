@@ -16,6 +16,10 @@
     <string name="generated_key_required">Необходим созданный ключ Ed25519</string>
     <string name="ssh_password">Пароль SSH (если нужен)</string>
     <string name="socks_port">Локальный порт SOCKS</string>
+    <string name="dns_servers">DNS-серверы</string>
+    <string name="dns_servers_hint">IPv4-адреса, по одному в строке</string>
+    <string name="dns_servers_required">Укажите хотя бы один DNS-сервер</string>
+    <string name="invalid_dns_server">Недопустимый IPv4-адрес DNS-сервера: %1$s</string>
     <string name="accept_unknown_host">Доверять и сохранять ключ SSH-сервера при первом подключении</string>
     <string name="connect">Проверить SSH с маршрутизацией</string>
     <string name="disconnect">Отключиться</string>

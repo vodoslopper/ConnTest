@@ -290,6 +290,10 @@ public final class MainActivity extends Activity {
         EditText user = field(R.string.ssh_username, InputType.TYPE_CLASS_TEXT);
         EditText password = field(R.string.ssh_password, InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_PASSWORD);
         EditText socksPort = field(R.string.socks_port, InputType.TYPE_CLASS_NUMBER);
+        EditText dnsServers = field(R.string.dns_servers_hint,
+                InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_MULTI_LINE);
+        dnsServers.setSingleLine(false);
+        dnsServers.setMinLines(2);
         CheckBox acceptUnknown = new CheckBox(this);
         acceptUnknown.setText(R.string.accept_unknown_host);
         Spinner keys = new Spinner(this);
@@ -311,6 +315,7 @@ public final class MainActivity extends Activity {
                 android.R.layout.simple_spinner_dropdown_item, jumpLabels));
         name.setText(host.name); address.setText(host.address); sshPort.setText(Integer.toString(host.sshPort));
         user.setText(host.user); password.setText(host.password); socksPort.setText(Integer.toString(host.socksPort));
+        dnsServers.setText(DnsServers.format(host.dnsServers));
         acceptUnknown.setChecked(host.acceptUnknown);
         int keyIndex = keyNames.indexOf(host.keyName);
         keys.setSelection(Math.max(0, keyIndex));
@@ -323,7 +328,9 @@ public final class MainActivity extends Activity {
         form.addView(keys);
         TextView jumpLabel = text(R.string.jump_host); jumpLabel.setPadding(0, dp(10), 0, 0); form.addView(jumpLabel);
         form.addView(jumpHosts); jumpHosts.setSelection(jumpIndex);
-        form.addView(socksPort); form.addView(acceptUnknown);
+        form.addView(socksPort);
+        TextView dnsLabel = text(R.string.dns_servers); dnsLabel.setPadding(0, dp(10), 0, 0); form.addView(dnsLabel);
+        form.addView(dnsServers); form.addView(acceptUnknown);
         if (existing != null) {
             Button clearKnownHost = button(R.string.clear_known_host_key, view -> {
                 String endpoint = SshSocksEndpoint.knownHostKeyName(host.address, host.sshPort);
@@ -360,6 +367,13 @@ public final class MainActivity extends Activity {
                     host.name = name.getText().toString().trim(); host.address = hostAddress; host.user = hostUser;
                     host.sshPort = parsePort(sshPort.getText().toString(), getString(R.string.ssh_port));
                     host.socksPort = parsePort(socksPort.getText().toString(), getString(R.string.socks_port));
+                    try {
+                        host.dnsServers = DnsServers.parse(dnsServers.getText().toString());
+                    } catch (IllegalArgumentException exception) {
+                        throw new IllegalArgumentException(exception.getMessage().isEmpty()
+                                ? getString(R.string.dns_servers_required)
+                                : getString(R.string.invalid_dns_server, exception.getMessage()));
+                    }
                     host.password = password.getText().toString(); host.acceptUnknown = acceptUnknown.isChecked();
                     host.keyName = (String) keys.getSelectedItem();
                     int selectedJump = jumpHosts.getSelectedItemPosition();
@@ -485,7 +499,8 @@ public final class MainActivity extends Activity {
             ConnectionLog.append("Connection requested for " + host.user + "@" + host.address + ":" + host.sshPort + " using key '" + host.keyName + "'");
             pendingConnectIntent = ConnTestRoutingService.connectIntent(this, host.address, host.sshPort,
                     host.user, identity.readPrivateKey(), host.password, host.socksPort,
-                    host.acceptUnknown, jump, jumpIdentity == null ? null : jumpIdentity.readPrivateKey());
+                    host.acceptUnknown, host.dnsServers, jump,
+                    jumpIdentity == null ? null : jumpIdentity.readPrivateKey());
             Intent permissionIntent = VpnService.prepare(this);
             if (permissionIntent == null) { startRoutingService(pendingConnectIntent); pendingConnectIntent = null; }
             else { ConnectionLog.append("Waiting for Android routing permission"); startActivityForResult(permissionIntent, ROUTING_REQUEST); }

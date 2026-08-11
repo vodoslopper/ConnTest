@@ -16,6 +16,10 @@
     <string name="generated_key_required">È necessaria una chiave Ed25519 generata</string>
     <string name="ssh_password">Password SSH di riserva (facoltativa)</string>
     <string name="socks_port">Porta SOCKS locale</string>
+    <string name="dns_servers">Server DNS</string>
+    <string name="dns_servers_hint">Indirizzi IPv4, uno per riga</string>
+    <string name="dns_servers_required">Inserisci almeno un server DNS</string>
+    <string name="invalid_dns_server">Indirizzo IPv4 del server DNS non valido: %1$s</string>
     <string name="accept_unknown_host">Considera attendibile e memorizza la chiave host SSH alla prima connessione</string>
     <string name="connect">Verifica SSH con instradamento</string>
     <string name="disconnect">Disconnetti</string>

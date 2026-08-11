@@ -28,16 +28,20 @@ final class HostStore {
         boolean acceptUnknown = true;
         String keyName = SshIdentityStore.DEFAULT_NAME;
         String jumpHostId = "";
+        List<String> dnsServers = DnsServers.defaults();
 
         String label() {
             return name.trim().isEmpty() ? address : name + " — " + address;
         }
 
         JSONObject toJson() throws JSONException {
+            JSONArray dns = new JSONArray();
+            for (String server : dnsServers) dns.put(server);
             return new JSONObject().put("id", id).put("name", name).put("address", address)
                     .put("sshPort", sshPort).put("user", user).put("password", password)
                     .put("socksPort", socksPort).put("acceptUnknown", acceptUnknown)
-                    .put("keyName", keyName).put("jumpHostId", jumpHostId);
+                    .put("keyName", keyName).put("jumpHostId", jumpHostId)
+                    .put("dnsServers", dns);
         }
 
         static Host fromJson(JSONObject json) {
@@ -52,6 +56,17 @@ final class HostStore {
             host.acceptUnknown = json.optBoolean("acceptUnknown", true);
             host.keyName = json.optString("keyName", SshIdentityStore.DEFAULT_NAME);
             host.jumpHostId = json.optString("jumpHostId");
+            JSONArray dns = json.optJSONArray("dnsServers");
+            if (dns != null) {
+                List<String> servers = new ArrayList<>();
+                for (int i = 0; i < dns.length(); i++) {
+                    String server = dns.optString(i);
+                    if (DnsServers.isIpv4Address(server) && !servers.contains(server)) {
+                        servers.add(server);
+                    }
+                }
+                if (!servers.isEmpty()) host.dnsServers = servers;
+            }
             return host;
         }
     }

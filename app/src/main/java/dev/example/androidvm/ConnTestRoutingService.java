@@ -16,6 +16,7 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -45,6 +46,7 @@ public final class ConnTestRoutingService extends VpnService {
             String password,
             int socksPort,
             boolean acceptUnknownHost,
+            List<String> dnsServers,
             HostStore.Host jumpHost,
             byte[] jumpPrivateKey) {
         Intent intent = new Intent(context, ConnTestRoutingService.class)
@@ -55,7 +57,8 @@ public final class ConnTestRoutingService extends VpnService {
                 .putExtra("privateKey", privateKey)
                 .putExtra("password", password)
                 .putExtra("socksPort", socksPort)
-                .putExtra("acceptUnknownHost", acceptUnknownHost);
+                .putExtra("acceptUnknownHost", acceptUnknownHost)
+                .putExtra("dnsServers", dnsServers.toArray(new String[0]));
         if (jumpHost != null) {
             intent.putExtra("jumpHost", jumpHost.address)
                     .putExtra("jumpPort", jumpHost.sshPort)
@@ -99,6 +102,10 @@ public final class ConnTestRoutingService extends VpnService {
             final int socksPort = intent.getIntExtra("socksPort", 1080);
             final boolean acceptUnknownHost =
                     intent.getBooleanExtra("acceptUnknownHost", false);
+            final String[] requestedDnsServers = intent.getStringArrayExtra("dnsServers");
+            final List<String> dnsServers = requestedDnsServers == null
+                    ? DnsServers.defaults()
+                    : java.util.Arrays.asList(requestedDnsServers);
             final String jumpHost = intent.getStringExtra("jumpHost");
             final SshSocksEndpoint.JumpHost jump = jumpHost == null ? null
                     : new SshSocksEndpoint.JumpHost(
@@ -116,6 +123,7 @@ public final class ConnTestRoutingService extends VpnService {
                     password,
                     socksPort,
                     acceptUnknownHost,
+                    dnsServers,
                     jump));
         }
         return Service.START_NOT_STICKY;
@@ -143,6 +151,7 @@ public final class ConnTestRoutingService extends VpnService {
             String password,
             int socksPort,
             boolean acceptUnknownHost,
+            List<String> dnsServers,
             SshSocksEndpoint.JumpHost jumpHost) {
         synchronized (tunnelLock) {
             connected = false;
@@ -170,14 +179,15 @@ public final class ConnTestRoutingService extends VpnService {
                         .setSession("ConnTest: " + host)
                         .setMtu(1500)
                         .addAddress("198.18.0.1", 32)
-                        .addRoute("0.0.0.0", 0)
-                        .addDnsServer("1.1.1.1");
+                        .addRoute("0.0.0.0", 0);
+                for (String dnsServer : dnsServers) builder.addDnsServer(dnsServer);
                 builder.addDisallowedApplication(getPackageName());
                 routingInterface = builder.establish();
                 if (routingInterface == null) {
                     throw new IOException("Android did not establish the routing interface");
                 }
-                ConnectionLog.append("Android routing interface established");
+                ConnectionLog.append("Android routing interface established with DNS "
+                        + DnsServers.format(dnsServers).replace("\n", ", "));
 
                 File config = writeTunnelConfig(socksPort);
                 TProxyService.start(config.getAbsolutePath(), routingInterface.getFd());

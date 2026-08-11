@@ -16,6 +16,10 @@
     <string name="generated_key_required">A generated Ed25519 key is required</string>
     <string name="ssh_password">SSH password fallback (optional)</string>
     <string name="socks_port">Local SOCKS port</string>
+    <string name="dns_servers">DNS servers</string>
+    <string name="dns_servers_hint">IPv4 addresses, one per line</string>
+    <string name="dns_servers_required">Enter at least one DNS server</string>
+    <string name="invalid_dns_server">Invalid IPv4 DNS server: %1$s</string>
     <string name="accept_unknown_host">Trust and pin this SSH host key on first connection</string>
     <string name="connect">Test SSH with routing</string>
     <string name="disconnect">Disconnect</string>

@@ -58,6 +58,10 @@ The test covers:
 - DNS queries converted to DNS-over-TCP and carried through SSH.
 - Android routing for other installed apps.
 
+Each saved SSH host has its own ordered list of IPv4 DNS servers. Existing and
+new host records default to `1.1.1.1`; edit a host to enter one or more DNS
+server addresses, separated by commas, spaces, or new lines.
+
 Standard OpenSSH dynamic forwarding does not implement SOCKS5 UDP forwarding.
 ConnTest handles only DNS from SOCKS5 UDP association, converting each query to
 DNS-over-TCP on an SSH `direct-tcpip` channel. It blocks other UDP instead of

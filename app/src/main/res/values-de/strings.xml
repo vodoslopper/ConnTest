@@ -16,6 +16,10 @@
     <string name="generated_key_required">Ein generierter Ed25519-Schlüssel ist erforderlich</string>
     <string name="ssh_password">SSH-Passwort (optional)</string>
     <string name="socks_port">Lokaler SOCKS-Port</string>
+    <string name="dns_servers">DNS-Server</string>
+    <string name="dns_servers_hint">IPv4-Adressen, eine pro Zeile</string>
+    <string name="dns_servers_required">Geben Sie mindestens einen DNS-Server ein</string>
+    <string name="invalid_dns_server">Ungültige IPv4-Adresse des DNS-Servers: %1$s</string>
     <string name="accept_unknown_host">SSH-Hostschlüssel bei der ersten Verbindung vertrauen und speichern</string>
     <string name="connect">SSH mit Routing testen</string>
     <string name="disconnect">Verbindung trennen</string>
