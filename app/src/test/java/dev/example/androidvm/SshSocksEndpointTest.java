@@ -10,6 +10,13 @@ import org.junit.Test;
 
 public final class SshSocksEndpointTest {
     @Test
+    public void formatsKnownHostKeyNamesLikeJsch() {
+        assertEquals("example.org", SshSocksEndpoint.knownHostKeyName("example.org", 22));
+        assertEquals("[example.org]:2222",
+                SshSocksEndpoint.knownHostKeyName("example.org", 2222));
+    }
+
+    @Test
     public void parsesIpv4DnsUdpRequest() throws Exception {
         byte[] payload = new byte[]{1, 2, 3, 4};
         byte[] packet = new byte[]{0, 0, 0, 1, 1, 1, 1, 1, 0, 53, 1, 2, 3, 4};

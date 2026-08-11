@@ -64,6 +64,11 @@
     <string name="delete">Delete</string>
     <string name="delete_host_warning">Delete this saved host?</string>
     <string name="edit_host_description">Edit host %1$s</string>
+    <string name="clear_known_host_key">Clear known host key</string>
+    <string name="clear_known_host_key_warning">Clear the saved SSH host key for %1$s? You will need to verify and trust its key again on the next connection.</string>
+    <string name="clear">Clear</string>
+    <string name="known_host_key_cleared">Known host key cleared.</string>
+    <string name="known_host_key_not_found">No known host key was saved for this server.</string>
     <string name="add_key">Add key</string>
     <string name="key_name">Unique key name</string>
     <string name="create">Create</string>

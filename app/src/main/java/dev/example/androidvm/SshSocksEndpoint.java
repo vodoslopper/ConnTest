@@ -37,6 +37,7 @@ import java.util.concurrent.Executors;
 
 final class SshSocksEndpoint implements AutoCloseable {
     private static final int CONNECT_TIMEOUT_MS = 15_000;
+    private static final String HOST_KEY_PREFERENCES = "ssh-host-keys";
 
     private final VpnService routingService;
     private final String host;
@@ -57,6 +58,20 @@ final class SshSocksEndpoint implements AutoCloseable {
     private int jumpForwardPort;
     private ServerSocket serverSocket;
     private Thread acceptThread;
+
+    static String knownHostKeyName(String host, int port) {
+        return port == 22 ? host : "[" + host + "]:" + port;
+    }
+
+    static boolean clearKnownHostKey(Context context, String host, int port) {
+        String keyName = knownHostKeyName(host, port);
+        SharedPreferences preferences = context.getSharedPreferences(
+                HOST_KEY_PREFERENCES, Context.MODE_PRIVATE);
+        if (!preferences.contains(keyName)) return false;
+        boolean cleared = preferences.edit().remove(keyName).commit();
+        if (cleared) ConnectionLog.append("Cleared SSH host key pin for " + keyName);
+        return cleared;
+    }
 
     SshSocksEndpoint(
             VpnService routingService,
@@ -602,12 +617,12 @@ final class SshSocksEndpoint implements AutoCloseable {
     }
 
     private static final class PersistentHostKeys implements HostKeyRepository {
-        private static final String PREFERENCES = "ssh-host-keys";
         private final SharedPreferences preferences;
         private final boolean trustUnknown;
 
         PersistentHostKeys(Context context, boolean trustUnknown) {
-            this.preferences = context.getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE);
+            this.preferences = context.getSharedPreferences(
+                    HOST_KEY_PREFERENCES, Context.MODE_PRIVATE);
             this.trustUnknown = trustUnknown;
         }
 

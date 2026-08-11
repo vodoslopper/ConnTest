@@ -324,6 +324,25 @@ public final class MainActivity extends Activity {
         TextView jumpLabel = text(R.string.jump_host); jumpLabel.setPadding(0, dp(10), 0, 0); form.addView(jumpLabel);
         form.addView(jumpHosts); jumpHosts.setSelection(jumpIndex);
         form.addView(socksPort); form.addView(acceptUnknown);
+        if (existing != null) {
+            Button clearKnownHost = button(R.string.clear_known_host_key, view -> {
+                String endpoint = SshSocksEndpoint.knownHostKeyName(host.address, host.sshPort);
+                new AlertDialog.Builder(this)
+                        .setMessage(getString(R.string.clear_known_host_key_warning, endpoint))
+                        .setNegativeButton(android.R.string.cancel, null)
+                        .setPositiveButton(R.string.clear, (d, w) -> {
+                            boolean cleared = SshSocksEndpoint.clearKnownHostKey(
+                                    this, host.address, host.sshPort);
+                            Toast.makeText(this, cleared
+                                            ? R.string.known_host_key_cleared
+                                            : R.string.known_host_key_not_found,
+                                    Toast.LENGTH_LONG).show();
+                        }).show();
+            });
+            LinearLayout.LayoutParams clearParams = matchWrap();
+            clearParams.setMargins(0, dp(10), 0, 0);
+            form.addView(clearKnownHost, clearParams);
+        }
         ScrollView scroll = new ScrollView(this); scroll.addView(form);
         AlertDialog.Builder builder = new AlertDialog.Builder(this)
                 .setTitle(existing == null ? R.string.add_host : R.string.edit_host)
