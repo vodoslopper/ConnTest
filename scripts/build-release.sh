@@ -6,7 +6,6 @@ keystore_dir="$project_dir/signing"
 keystore_file="$keystore_dir/ConnTest-release.jks"
 artifact_dir="$project_dir/artifacts"
 artifact_file="$artifact_dir/ConnTest-release.apk"
-checksum_file="$artifact_dir/SHA256SUMS"
 
 if ! command -v keytool >/dev/null 2>&1; then
     echo "error: keytool is required (install a JDK)" >&2
@@ -53,13 +52,7 @@ ANDROID_HOME=${ANDROID_HOME:-/opt/android-sdk} \
 
 mkdir -p "$artifact_dir"
 cp "$project_dir/app/build/outputs/apk/release/app-release.apk" "$artifact_file"
-checksum_temporary="$checksum_file.new"
-(
-    cd "$project_dir"
-    sha256sum "artifacts/$(basename "$artifact_file")"
-) >"$checksum_temporary"
-mv "$checksum_temporary" "$checksum_file"
-cat "$checksum_file"
 
 echo "Release APK: $artifact_file"
+echo "Export the APK, then run scripts/prepare-release-on-host.sh on the host."
 echo "Back up signing/ConnTest-release.jks and keystore.properties securely."

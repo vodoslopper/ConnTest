@@ -134,12 +134,26 @@ The VM produces the SSH test APK at:
 artifacts/ConnTest-release.apk
 ```
 
-Copy it into the repository as `artifacts/ConnTest-release.apk`, update
-`artifacts/SHA256SUMS`, and verify:
+After every successful VM build, immediately copy only the APK to the host:
 
 ```sh
-sha256sum -c artifacts/SHA256SUMS
+vml rsync-from --archive --check \
+  --sources /home/androidbuild/ConnTest/artifacts/ConnTest-release.apk \
+  --destination artifacts/ConnTest-release.apk -n android-builder
 ```
+
+Then, on the host, generate its checksum and detached armored GPG signature:
+
+```sh
+./scripts/prepare-release-on-host.sh
+sha256sum -c artifacts/SHA256SUMS
+gpg --verify artifacts/SHA256SUMS.asc artifacts/SHA256SUMS
+```
+
+Set `CONNTEST_GPG_KEY` to a key fingerprint or key ID when the host has more
+than one secret key or a specific release-signing identity is required. Publish
+all three files together: `ConnTest-release.apk`, `SHA256SUMS`, and
+`SHA256SUMS.asc`. Never create the checksum or GPG signature in the build VM.
 
 ## Build a release APK for direct installation
 
@@ -156,7 +170,9 @@ by Git. Back up both files securely: every future update must use the same key,
 or Android will reject it. Do not distribute either signing file.
 
 The installable output is `artifacts/ConnTest-release.apk`. Every update must
-be built with the same signing files.
+be built with the same Android signing files. After exporting the APK, run
+`./scripts/prepare-release-on-host.sh` on the host and publish the APK, checksum,
+and checksum signature together.
 
 ## Components used by the SSH test
 
