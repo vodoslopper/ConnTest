@@ -38,8 +38,9 @@
     <string name="command_format">Comando di verifica equivalente:\nssh -N -D %1$s -p %2$s -i &lt;chiave-ed25519-generata&gt;%3$s %4$s@%5$s</string>
     <string name="show_logs">Mostra i registri di connessione</string>
     <string name="hide_logs">Nascondi i registri di connessione</string>
-    <string name="share_logs">Condividi il file di registro</string>
+    <string name="share_logs">Condividi l’archivio dei registri</string>
     <string name="clear_logs">Cancella i registri</string>
+    <string name="clear_logs_failed">Impossibile cancellare i registri: %1$s</string>
     <string name="no_logs">Non sono ancora presenti registri di connessione.</string>
     <string name="share_logs_failed">Impossibile condividere i registri: %1$s</string>
     <string name="test_url">URL di verifica</string>

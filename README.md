@@ -29,8 +29,11 @@ dynamic SOCKS5 endpoint. The ready-to-install, release-signed APK is
 5. Tap **Test SSH with routing** and approve Android's connection request.
 6. Open a browser or another app to test its TCP connection through SSH.
 7. Return to ConnTest and tap **Disconnect** when the test is complete. Use
-   **Show connection logs** for verbose diagnostics or **Share logs file** to
-   send the current text log through Android's share sheet.
+   **Show connection logs** for verbose diagnostics or **Share logs archive**
+   to send the connection log, active native routing log, and rotated backup
+   through Android's share sheet. **Clear logs** clears all three safely. The
+   in-app log is capped at 64 KiB; the native routing log keeps one 1 MiB
+   rotated backup.
 8. To verify the complete route from inside ConnTest, leave the default
    `https://api.ipify.org?format=json` URL and tap **Send HTTP request through
    SSH routing**. The response displays the public address observed by the

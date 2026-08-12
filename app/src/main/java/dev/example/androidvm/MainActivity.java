@@ -36,7 +36,6 @@ import com.jcraft.jsch.JSchException;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
@@ -224,7 +223,7 @@ public final class MainActivity extends Activity {
         content.addView(logsButton);
         LinearLayout logActions = new LinearLayout(this);
         logActions.addView(button(R.string.share_logs, view -> shareLogs()), weighted());
-        logActions.addView(button(R.string.clear_logs, view -> { ConnectionLog.clear(); updateLogs(); }), weighted());
+        logActions.addView(button(R.string.clear_logs, view -> clearLogs()), weighted());
         content.addView(logActions);
         logsView = text(0);
         logsView.setTextIsSelectable(true);
@@ -571,13 +570,27 @@ public final class MainActivity extends Activity {
         try {
             File directory = new File(getCacheDir(), "shared-logs");
             if (!directory.isDirectory() && !directory.mkdirs()) throw new IOException("could not create log-share directory");
-            File file = new File(directory, "conntest-connection-log.txt");
-            try (FileOutputStream output = new FileOutputStream(file, false)) { output.write(ConnectionLog.snapshot().getBytes(StandardCharsets.UTF_8)); }
+            File file = new File(directory, "conntest-logs.zip");
+            LogArchive.create(file, ConnectionLog.snapshot(),
+                    new File(getFilesDir(), NativeLogRotator.FILE_NAME));
             Uri uri = FileProvider.getUriForFile(this, getPackageName() + ".files", file);
-            Intent share = new Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_STREAM, uri).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-            share.setClipData(ClipData.newRawUri("ConnTest connection log", uri));
+            Intent share = new Intent(Intent.ACTION_SEND).setType("application/zip").putExtra(Intent.EXTRA_STREAM, uri).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            share.setClipData(ClipData.newRawUri("ConnTest logs archive", uri));
             startActivity(Intent.createChooser(share, getString(R.string.share_logs)));
         } catch (IOException | IllegalArgumentException exception) { showError(getString(R.string.share_logs_failed, readableMessage(exception))); }
+    }
+
+    private void clearLogs() {
+        ConnectionLog.clear();
+        try {
+            NativeLogRotator.clear(
+                    new File(getFilesDir(), NativeLogRotator.FILE_NAME));
+        } catch (IOException exception) {
+            showError(getString(R.string.clear_logs_failed, readableMessage(exception)));
+            ConnectionLog.append(
+                    "Could not clear native routing logs: " + readableMessage(exception));
+        }
+        updateLogs();
     }
 
     private void copy(String value) {
