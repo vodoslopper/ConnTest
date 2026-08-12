@@ -45,6 +45,7 @@ public final class ConnTestRoutingService extends VpnService {
     private volatile Thread connectionThread;
     private volatile boolean stopRequested = true;
     private PowerManager.WakeLock wakeLock;
+    private boolean logRotationFailureReported;
 
     public static Intent connectIntent(
             Context context,
@@ -290,22 +291,28 @@ public final class ConnTestRoutingService extends VpnService {
             SshSocksEndpoint endpoint = sshEndpoint;
             if (endpoint == null || !endpoint.isConnected()) return;
             Thread.sleep(HEALTH_CHECK_INTERVAL_MILLIS);
+            rotateNativeLogIfNeeded();
         }
     }
 
     private void sleepUntilRetry(long delayMillis) {
-        try {
-            Thread.sleep(delayMillis);
-        } catch (InterruptedException ignored) {
-            // Disconnect interrupts reconnect delays so teardown is immediate.
+        long remainingMillis = delayMillis;
+        while (!stopRequested && remainingMillis > 0) {
+            long sleepMillis = Math.min(remainingMillis, HEALTH_CHECK_INTERVAL_MILLIS);
+            try {
+                Thread.sleep(sleepMillis);
+            } catch (InterruptedException ignored) {
+                // Disconnect interrupts reconnect delays so teardown is immediate.
+                return;
+            }
+            remainingMillis -= sleepMillis;
+            rotateNativeLogIfNeeded();
         }
     }
 
     private File writeTunnelConfig(int socksPort) throws IOException {
-        File bridgeLog = new File(getFilesDir(), "routing-native.log");
-        if (bridgeLog.exists() && !bridgeLog.delete()) {
-            throw new IOException("Could not reset native routing log");
-        }
+        File bridgeLog = new File(getFilesDir(), NativeLogRotator.FILE_NAME);
+        NativeLogRotator.reset(bridgeLog);
         String config =
                 "tunnel:\n"
                         + "  mtu: 1500\n"
@@ -327,6 +334,20 @@ public final class ConnTestRoutingService extends VpnService {
             output.write(config.getBytes(StandardCharsets.UTF_8));
         }
         return file;
+    }
+
+    private void rotateNativeLogIfNeeded() {
+        try {
+            NativeLogRotator.rotateIfNeeded(
+                    new File(getFilesDir(), NativeLogRotator.FILE_NAME));
+            logRotationFailureReported = false;
+        } catch (IOException exception) {
+            if (!logRotationFailureReported) {
+                ConnectionLog.append(
+                        "Could not rotate native routing log: " + readableMessage(exception));
+                logRotationFailureReported = true;
+            }
+        }
     }
 
     private void requestStopTunnel() {
