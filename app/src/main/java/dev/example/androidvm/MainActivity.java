@@ -89,7 +89,7 @@ public final class MainActivity extends Activity {
     private final Runnable statusUpdater = new Runnable() {
         @Override public void run() {
             if (statusView != null) {
-                statusView.setText(getString(R.string.status_format,
+                setTextIfChanged(statusView, getString(R.string.status_format,
                         ConnTestRoutingService.getStatus(MainActivity.this)));
             }
             if (connectButton != null) {
@@ -226,7 +226,6 @@ public final class MainActivity extends Activity {
         logActions.addView(button(R.string.clear_logs, view -> clearLogs()), weighted());
         content.addView(logActions);
         logsView = text(0);
-        logsView.setTextIsSelectable(true);
         logsView.setTypeface(Typeface.MONOSPACE);
         logsView.setVisibility(View.GONE);
         content.addView(logsView);
@@ -563,7 +562,9 @@ public final class MainActivity extends Activity {
 
     private void updateLogs() {
         if (logsView == null) return;
-        String logs = ConnectionLog.snapshot(); logsView.setText(logs.isEmpty() ? getString(R.string.no_logs) : logs);
+        String logs = ConnectionLog.snapshot();
+        String displayedLogs = logs.isEmpty() ? getString(R.string.no_logs) : logs;
+        setTextIfChanged(logsView, displayedLogs);
     }
 
     private void shareLogs() {
@@ -659,6 +660,10 @@ public final class MainActivity extends Activity {
     private EditText field(int hint, int type) { EditText field = new EditText(this); field.setHint(hint); field.setSingleLine(true); field.setInputType(type); return field; }
 
     private Button button(int text, View.OnClickListener listener) { Button button = new Button(this); button.setText(text); button.setOnClickListener(listener); return button; }
+
+    private static void setTextIfChanged(TextView view, CharSequence text) {
+        if (!text.toString().contentEquals(view.getText())) view.setText(text);
+    }
 
     private LinearLayout.LayoutParams matchWrap() { return new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT); }
 
