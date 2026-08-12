@@ -189,7 +189,7 @@ public final class MainActivity extends Activity {
         connectButton.setTextSize(22);
         connectButton.setMinHeight(dp(76));
         connectButton.setOnClickListener(view -> {
-            if (ConnTestRoutingService.isConnected()) disconnect(); else requestConnect();
+            if (ConnTestRoutingService.isActive()) disconnect(); else requestConnect();
         });
         LinearLayout.LayoutParams connectParams = matchWrap();
         connectParams.setMargins(0, dp(20), 0, 0);
@@ -235,11 +235,11 @@ public final class MainActivity extends Activity {
     }
 
     private void updateConnectButton() {
-        boolean connected = ConnTestRoutingService.isConnected();
-        if (connectButtonConnected != null && connectButtonConnected == connected) return;
-        connectButtonConnected = connected;
-        connectButton.setText(connected ? R.string.disconnect : R.string.connect);
-        if (connected) {
+        boolean active = ConnTestRoutingService.isActive();
+        if (connectButtonConnected != null && connectButtonConnected == active) return;
+        connectButtonConnected = active;
+        connectButton.setText(active ? R.string.disconnect : R.string.connect);
+        if (active) {
             connectButton.setBackgroundTintList(ColorStateList.valueOf(
                     getColor(R.color.disconnect_button_green)));
             connectButton.setTextColor(getColor(R.color.disconnect_button_text));

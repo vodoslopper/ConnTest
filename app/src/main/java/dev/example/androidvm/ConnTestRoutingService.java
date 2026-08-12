@@ -1,5 +1,6 @@
 package dev.example.androidvm;
 
+import android.annotation.SuppressLint;
 import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
@@ -7,15 +8,18 @@ import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.content.pm.ServiceInfo;
 import android.net.VpnService;
 import android.os.Build;
 import android.os.ParcelFileDescriptor;
+import android.os.PowerManager;
 
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -27,8 +31,10 @@ public final class ConnTestRoutingService extends VpnService {
     private static final String ACTION_DISCONNECT = "dev.example.androidvm.DISCONNECT";
     private static final String CHANNEL_ID = "conntest_ssh";
     private static final int NOTIFICATION_ID = 7;
+    private static final long HEALTH_CHECK_INTERVAL_MILLIS = 5_000L;
 
     private static volatile RoutingStatus status = new RoutingStatus(R.string.status_disconnected);
+    private static volatile boolean active;
     private static volatile boolean connected;
     private static volatile int localEndpointPort;
 
@@ -36,6 +42,9 @@ public final class ConnTestRoutingService extends VpnService {
     private final Object tunnelLock = new Object();
     private ParcelFileDescriptor routingInterface;
     private volatile SshSocksEndpoint sshEndpoint;
+    private volatile Thread connectionThread;
+    private volatile boolean stopRequested = true;
+    private PowerManager.WakeLock wakeLock;
 
     public static Intent connectIntent(
             Context context,
@@ -82,6 +91,10 @@ public final class ConnTestRoutingService extends VpnService {
         return connected;
     }
 
+    public static boolean isActive() {
+        return active;
+    }
+
     public static int getLocalEndpointPort() {
         return localEndpointPort;
     }
@@ -94,6 +107,7 @@ public final class ConnTestRoutingService extends VpnService {
             return Service.START_NOT_STICKY;
         }
         if (ACTION_CONNECT.equals(intent.getAction())) {
+            if (active) return Service.START_REDELIVER_INTENT;
             final String host = intent.getStringExtra("host");
             final int sshPort = intent.getIntExtra("sshPort", 22);
             final String user = intent.getStringExtra("user");
@@ -106,16 +120,7 @@ public final class ConnTestRoutingService extends VpnService {
             final List<String> dnsServers = requestedDnsServers == null
                     ? DnsServers.defaults()
                     : java.util.Arrays.asList(requestedDnsServers);
-            final String jumpHost = intent.getStringExtra("jumpHost");
-            final SshSocksEndpoint.JumpHost jump = jumpHost == null ? null
-                    : new SshSocksEndpoint.JumpHost(
-                            jumpHost,
-                            intent.getIntExtra("jumpPort", 22),
-                            intent.getStringExtra("jumpUser"),
-                            intent.getByteArrayExtra("jumpPrivateKey"),
-                            intent.getStringExtra("jumpPassword"),
-                            intent.getBooleanExtra("jumpAcceptUnknownHost", false));
-            worker.execute(() -> connect(
+            final ConnectionParameters parameters = new ConnectionParameters(
                     host,
                     sshPort,
                     user,
@@ -124,9 +129,17 @@ public final class ConnTestRoutingService extends VpnService {
                     socksPort,
                     acceptUnknownHost,
                     dnsServers,
-                    jump));
+                    intent.getStringExtra("jumpHost"),
+                    intent.getIntExtra("jumpPort", 22),
+                    intent.getStringExtra("jumpUser"),
+                    intent.getByteArrayExtra("jumpPrivateKey"),
+                    intent.getStringExtra("jumpPassword"),
+                    intent.getBooleanExtra("jumpAcceptUnknownHost", false));
+            stopRequested = false;
+            active = true;
+            worker.execute(() -> runConnection(parameters));
         }
-        return Service.START_NOT_STICKY;
+        return Service.START_REDELIVER_INTENT;
     }
 
     @Override
@@ -137,74 +150,154 @@ public final class ConnTestRoutingService extends VpnService {
 
     @Override
     public void onDestroy() {
+        stopRequested = true;
+        active = false;
+        connected = false;
+        closeSshEndpoint();
         worker.shutdownNow();
-        Thread teardown = new Thread(this::stopTunnel, "ConnTest-routing-teardown");
+        Thread teardown = new Thread(() -> {
+            clearTunnelResources();
+            releaseWakeLock();
+        }, "ConnTest-routing-teardown");
         teardown.start();
         super.onDestroy();
     }
 
-    private void connect(
-            String host,
-            int sshPort,
-            String user,
-            byte[] privateKey,
-            String password,
-            int socksPort,
-            boolean acceptUnknownHost,
-            List<String> dnsServers,
-            SshSocksEndpoint.JumpHost jumpHost) {
-        synchronized (tunnelLock) {
-            connected = false;
+    private void runConnection(ConnectionParameters parameters) {
+        connectionThread = Thread.currentThread();
+        boolean connectedOnce = false;
+        int consecutiveFailures = 0;
+        String reconnectReason = getString(R.string.ssh_connection_lost);
+        try {
+            acquireWakeLock();
             ConnectionLog.append("Starting connection worker");
-            clearTunnelResources();
-            try {
-                String statusText = setStatus(R.string.status_connecting, user, host, sshPort);
-                ConnectionLog.append(statusText);
-                updateNotification(statusText);
-
-                sshEndpoint = new SshSocksEndpoint(
-                        this,
-                        host,
-                        sshPort,
-                        user,
-                        privateKey,
-                        password == null ? "" : password,
-                        socksPort,
-                        acceptUnknownHost,
-                        jumpHost);
-                sshEndpoint.start();
-                ConnectionLog.append("SSH authentication completed; SOCKS listener is ready");
-
-                VpnService.Builder builder = new VpnService.Builder()
-                        .setSession("ConnTest: " + host)
-                        .setMtu(1500)
-                        .addAddress("198.18.0.1", 32)
-                        .addRoute("0.0.0.0", 0);
-                for (String dnsServer : dnsServers) builder.addDnsServer(dnsServer);
-                builder.addDisallowedApplication(getPackageName());
-                routingInterface = builder.establish();
-                if (routingInterface == null) {
-                    throw new IOException("Android did not establish the routing interface");
+            while (!stopRequested) {
+                if (connectedOnce) {
+                    long delayMillis = ReconnectBackoff.delayMillis(consecutiveFailures);
+                    long delaySeconds = delayMillis / 1_000L;
+                    String statusText = setStatus(
+                            R.string.status_reconnecting, delaySeconds);
+                    ConnectionLog.append(statusText + ": " + reconnectReason);
+                    updateNotification(statusText);
+                    sleepUntilRetry(delayMillis);
+                    if (stopRequested) break;
+                } else {
+                    String statusText = setStatus(
+                            R.string.status_connecting,
+                            parameters.user,
+                            parameters.host,
+                            parameters.sshPort);
+                    ConnectionLog.append(statusText);
+                    updateNotification(statusText);
                 }
-                ConnectionLog.append("Android routing interface established with DNS "
-                        + DnsServers.format(dnsServers).replace("\n", ", "));
 
-                File config = writeTunnelConfig(socksPort);
-                TProxyService.start(config.getAbsolutePath(), routingInterface.getFd());
-                ConnectionLog.append("TUN-to-SOCKS bridge started");
-                statusText = setStatus(R.string.status_connected, host);
-                localEndpointPort = socksPort;
-                connected = true;
-                ConnectionLog.append(statusText);
-                updateNotification(statusText);
-            } catch (Exception exception) {
-                String statusText = setStatus(R.string.status_failed, readableMessage(exception));
-                ConnectionLog.append(statusText);
-                updateNotification(statusText);
-                clearTunnelResources();
-                stopForeground(true);
-                stopSelf();
+                try {
+                    startSshEndpoint(parameters);
+                    ConnectionLog.append(
+                            "SSH authentication completed; SOCKS listener is ready");
+                    if (routingInterface == null) establishRouting(parameters);
+
+                    connectedOnce = true;
+                    consecutiveFailures = 0;
+                    localEndpointPort = parameters.socksPort;
+                    connected = true;
+                    String statusText = setStatus(R.string.status_connected, parameters.host);
+                    ConnectionLog.append(statusText);
+                    updateNotification(statusText);
+
+                    waitForConnectionLoss();
+                    if (!stopRequested) {
+                        reconnectReason = getString(R.string.ssh_connection_lost);
+                        connected = false;
+                        localEndpointPort = 0;
+                        closeSshEndpoint();
+                    }
+                } catch (Exception exception) {
+                    connected = false;
+                    localEndpointPort = 0;
+                    closeSshEndpoint();
+                    if (stopRequested) break;
+                    if (!connectedOnce) {
+                        String statusText = setStatus(
+                                R.string.status_failed, readableMessage(exception));
+                        ConnectionLog.append(statusText);
+                        updateNotification(statusText);
+                        return;
+                    }
+                    consecutiveFailures++;
+                    reconnectReason = readableMessage(exception);
+                    ConnectionLog.append(
+                            "SSH reconnect attempt failed: " + readableMessage(exception));
+                }
             }
+        } finally {
+            parameters.close();
+            clearTunnelResources();
+            releaseWakeLock();
+            connectionThread = null;
+            connected = false;
+            active = false;
+            localEndpointPort = 0;
+            if (stopRequested) {
+                status = new RoutingStatus(R.string.status_disconnected);
+                ConnectionLog.append("Disconnected");
+            }
+            stopForeground(true);
+            stopSelf();
+        }
+    }
+
+    private void startSshEndpoint(ConnectionParameters parameters)
+            throws IOException, com.jcraft.jsch.JSchException {
+        SshSocksEndpoint endpoint = parameters.newEndpoint(this);
+        synchronized (tunnelLock) {
+            sshEndpoint = endpoint;
+        }
+        try {
+            endpoint.start();
+        } catch (IOException | com.jcraft.jsch.JSchException exception) {
+            endpoint.close();
+            synchronized (tunnelLock) {
+                if (sshEndpoint == endpoint) sshEndpoint = null;
+            }
+            throw exception;
+        }
+    }
+
+    private void establishRouting(ConnectionParameters parameters)
+            throws IOException, PackageManager.NameNotFoundException {
+        VpnService.Builder builder = new VpnService.Builder()
+                .setSession("ConnTest: " + parameters.host)
+                .setMtu(1500)
+                .addAddress("198.18.0.1", 32)
+                .addRoute("0.0.0.0", 0);
+        for (String dnsServer : parameters.dnsServers) builder.addDnsServer(dnsServer);
+        builder.addDisallowedApplication(getPackageName());
+        routingInterface = builder.establish();
+        if (routingInterface == null) {
+            throw new IOException("Android did not establish the routing interface");
+        }
+        ConnectionLog.append("Android routing interface established with DNS "
+                + DnsServers.format(parameters.dnsServers).replace("\n", ", "));
+
+        File config = writeTunnelConfig(parameters.socksPort);
+        TProxyService.start(config.getAbsolutePath(), routingInterface.getFd());
+        ConnectionLog.append("TUN-to-SOCKS bridge started");
+    }
+
+    private void waitForConnectionLoss() throws InterruptedException {
+        while (!stopRequested) {
+            SshSocksEndpoint endpoint = sshEndpoint;
+            if (endpoint == null || !endpoint.isConnected()) return;
+            Thread.sleep(HEALTH_CHECK_INTERVAL_MILLIS);
+        }
+    }
+
+    private void sleepUntilRetry(long delayMillis) {
+        try {
+            Thread.sleep(delayMillis);
+        } catch (InterruptedException ignored) {
+            // Disconnect interrupts reconnect delays so teardown is immediate.
         }
     }
 
@@ -236,23 +329,23 @@ public final class ConnTestRoutingService extends VpnService {
         return file;
     }
 
-    private void stopTunnel() {
-        synchronized (tunnelLock) {
-            ConnectionLog.append("Stopping connection and routing resources");
+    private void requestStopTunnel() {
+        stopRequested = true;
+        connected = false;
+        localEndpointPort = 0;
+        closeSshEndpoint();
+        Thread thread = connectionThread;
+        if (thread != null) {
+            thread.interrupt();
+        } else {
+            active = false;
             clearTunnelResources();
-            connected = false;
-            localEndpointPort = 0;
+            releaseWakeLock();
             status = new RoutingStatus(R.string.status_disconnected);
             ConnectionLog.append("Disconnected");
             stopForeground(true);
             stopSelf();
         }
-    }
-
-    private void requestStopTunnel() {
-        SshSocksEndpoint endpoint = sshEndpoint;
-        if (endpoint != null) endpoint.close();
-        worker.execute(this::stopTunnel);
     }
 
     private String setStatus(int resource, Object... arguments) {
@@ -276,24 +369,54 @@ public final class ConnTestRoutingService extends VpnService {
     }
 
     private void clearTunnelResources() {
-        try {
-            TProxyService.stop();
-        } catch (Throwable ignored) {
-            // The native library may not have started yet.
-        }
-        if (routingInterface != null) {
+        synchronized (tunnelLock) {
             try {
-                routingInterface.close();
-            } catch (IOException ignored) {
-                // Closing is best effort during teardown.
+                TProxyService.stop();
+            } catch (Throwable ignored) {
+                // The native library may not have started yet.
             }
-            routingInterface = null;
+            if (routingInterface != null) {
+                try {
+                    routingInterface.close();
+                } catch (IOException ignored) {
+                    // Closing is best effort during teardown.
+                }
+                routingInterface = null;
+            }
+            if (sshEndpoint != null) {
+                sshEndpoint.close();
+                sshEndpoint = null;
+            }
+            localEndpointPort = 0;
         }
-        if (sshEndpoint != null) {
-            sshEndpoint.close();
-            sshEndpoint = null;
+    }
+
+    private void closeSshEndpoint() {
+        synchronized (tunnelLock) {
+            if (sshEndpoint != null) {
+                sshEndpoint.close();
+                sshEndpoint = null;
+            }
         }
-        localEndpointPort = 0;
+    }
+
+    @SuppressLint("WakelockTimeout")
+    private synchronized void acquireWakeLock() {
+        PowerManager manager = (PowerManager) getSystemService(Context.POWER_SERVICE);
+        wakeLock = manager.newWakeLock(
+                PowerManager.PARTIAL_WAKE_LOCK, getPackageName() + ":ssh-routing");
+        wakeLock.setReferenceCounted(false);
+        wakeLock.acquire();
+        ConnectionLog.append("Acquired screen-off routing wake lock");
+    }
+
+    private synchronized void releaseWakeLock() {
+        PowerManager.WakeLock currentWakeLock = wakeLock;
+        wakeLock = null;
+        if (currentWakeLock != null && currentWakeLock.isHeld()) {
+            currentWakeLock.release();
+            ConnectionLog.append("Released screen-off routing wake lock");
+        }
     }
 
     private void startAsForeground(String text) {
@@ -365,5 +488,88 @@ public final class ConnTestRoutingService extends VpnService {
         return message == null || message.trim().isEmpty()
                 ? current.getClass().getSimpleName()
                 : message;
+    }
+
+    private static final class ConnectionParameters implements AutoCloseable {
+        final String host;
+        final int sshPort;
+        final String user;
+        final byte[] privateKey;
+        final String password;
+        final int socksPort;
+        final boolean acceptUnknownHost;
+        final List<String> dnsServers;
+        final String jumpHost;
+        final int jumpPort;
+        final String jumpUser;
+        final byte[] jumpPrivateKey;
+        final String jumpPassword;
+        final boolean jumpAcceptUnknownHost;
+
+        ConnectionParameters(
+                String host,
+                int sshPort,
+                String user,
+                byte[] privateKey,
+                String password,
+                int socksPort,
+                boolean acceptUnknownHost,
+                List<String> dnsServers,
+                String jumpHost,
+                int jumpPort,
+                String jumpUser,
+                byte[] jumpPrivateKey,
+                String jumpPassword,
+                boolean jumpAcceptUnknownHost) {
+            this.host = host;
+            this.sshPort = sshPort;
+            this.user = user;
+            this.privateKey = privateKey;
+            this.password = password == null ? "" : password;
+            this.socksPort = socksPort;
+            this.acceptUnknownHost = acceptUnknownHost;
+            this.dnsServers = dnsServers;
+            this.jumpHost = jumpHost;
+            this.jumpPort = jumpPort;
+            this.jumpUser = jumpUser;
+            this.jumpPrivateKey = jumpPrivateKey;
+            this.jumpPassword = jumpPassword == null ? "" : jumpPassword;
+            this.jumpAcceptUnknownHost = jumpAcceptUnknownHost;
+        }
+
+        SshSocksEndpoint newEndpoint(VpnService service) {
+            SshSocksEndpoint.JumpHost jump = jumpHost == null ? null
+                    : new SshSocksEndpoint.JumpHost(
+                            jumpHost,
+                            jumpPort,
+                            jumpUser,
+                            copy(jumpPrivateKey),
+                            jumpPassword,
+                            jumpAcceptUnknownHost);
+            return new SshSocksEndpoint(
+                    service,
+                    host,
+                    sshPort,
+                    user,
+                    copy(privateKey),
+                    password,
+                    socksPort,
+                    acceptUnknownHost,
+                    jump);
+        }
+
+        @Override
+        public void close() {
+            wipe(privateKey);
+            wipe(jumpPrivateKey);
+        }
+
+        private static byte[] copy(byte[] value) {
+            return value == null ? null : Arrays.copyOf(value, value.length);
+        }
+
+        private static void wipe(byte[] value) {
+            if (value != null) Arrays.fill(value, (byte) 0);
+        }
     }
 }

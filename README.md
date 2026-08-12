@@ -54,6 +54,8 @@ The test covers:
 - SSH public-key authentication, tried first.
 - Optional SSH password fallback.
 - SSH connection and keepalive behavior.
+- Screen-off operation with a partial wake lock, connection health monitoring,
+  and automatic SSH reconnection with delays capped at one minute.
 - Dynamic SOCKS5 TCP forwarding.
 - DNS queries converted to DNS-over-TCP and carried through SSH.
 - Android routing for other installed apps.

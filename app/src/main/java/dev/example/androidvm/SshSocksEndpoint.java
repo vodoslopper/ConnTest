@@ -53,8 +53,8 @@ final class SshSocksEndpoint implements AutoCloseable {
             new ConcurrentHashMap<Socket, Boolean>());
 
     private volatile boolean running;
-    private Session session;
-    private Session jumpSession;
+    private volatile Session session;
+    private volatile Session jumpSession;
     private int jumpForwardPort;
     private ServerSocket serverSocket;
     private Thread acceptThread;
@@ -152,6 +152,16 @@ final class SshSocksEndpoint implements AutoCloseable {
         running = true;
         acceptThread = new Thread(this::acceptLoop, "ConnTest-SOCKS-accept");
         acceptThread.start();
+    }
+
+    boolean isConnected() {
+        Session currentSession = session;
+        Session currentJumpSession = jumpSession;
+        return running
+                && currentSession != null
+                && currentSession.isConnected()
+                && (jumpHost == null
+                        || (currentJumpSession != null && currentJumpSession.isConnected()));
     }
 
     private void connectJumpHost() throws JSchException {

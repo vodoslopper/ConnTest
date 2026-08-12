@@ -28,6 +28,8 @@
     <string name="status_starting">SSH-Verbindungstest wird gestartet…</string>
     <string name="status_connecting">Verbindung zu %1$s@%2$s:%3$d wird hergestellt</string>
     <string name="status_connected">verbunden — TCP und DNS über %1$s</string>
+    <string name="status_reconnecting">Wiederverbindung in %1$d s</string>
+    <string name="ssh_connection_lost">SSH-Keepalive hat die Verbindung nicht bestätigt</string>
     <string name="status_failed">fehlgeschlagen: %1$s</string>
     <string name="routing_permission_denied">Die Routing-Berechtigung wurde nicht erteilt</string>
     <string name="host_and_user_required">SSH-Host und Benutzername sind erforderlich</string>

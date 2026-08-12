@@ -28,6 +28,8 @@
     <string name="status_starting">Avvio della verifica della connessione SSH…</string>
     <string name="status_connecting">connessione a %1$s@%2$s:%3$d</string>
     <string name="status_connected">connesso — TCP e DNS tramite %1$s</string>
+    <string name="status_reconnecting">riconnessione tra %1$d s</string>
+    <string name="ssh_connection_lost">Il keepalive SSH non ha confermato la connessione</string>
     <string name="status_failed">non riuscito: %1$s</string>
     <string name="routing_permission_denied">L’autorizzazione per l’instradamento non è stata concessa</string>
     <string name="host_and_user_required">Sono necessari l’host SSH e il nome utente</string>

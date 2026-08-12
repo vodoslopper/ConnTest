@@ -28,6 +28,8 @@
     <string name="status_starting">Запуск проверки SSH-подключения…</string>
     <string name="status_connecting">подключение к %1$s@%2$s:%3$d</string>
     <string name="status_connected">подключено — TCP и DNS направляются через %1$s</string>
+    <string name="status_reconnecting">переподключение через %1$d с</string>
+    <string name="ssh_connection_lost">SSH keepalive не подтвердил подключение</string>
     <string name="status_failed">ошибка: %1$s</string>
     <string name="routing_permission_denied">Разрешение на маршрутизацию не предоставлено</string>
     <string name="host_and_user_required">Укажите SSH-сервер и имя пользователя</string>

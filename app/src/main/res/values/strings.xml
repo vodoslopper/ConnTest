@@ -28,6 +28,8 @@
     <string name="status_starting">Starting SSH connection test…</string>
     <string name="status_connecting">connecting to %1$s@%2$s:%3$d</string>
     <string name="status_connected">connected — TCP and DNS through %1$s</string>
+    <string name="status_reconnecting">reconnecting in %1$d s</string>
+    <string name="ssh_connection_lost">SSH keepalive did not confirm the connection</string>
     <string name="status_failed">failed: %1$s</string>
     <string name="routing_permission_denied">Routing permission was not granted</string>
     <string name="host_and_user_required">SSH host and username are required</string>
