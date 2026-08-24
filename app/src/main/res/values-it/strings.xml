@@ -62,4 +62,19 @@
     <string name="menu_switch_theme">Cambia tema</string>
     <string name="share_public_key">Condividi chiave pubblica</string>
     <string name="public_key_subject">Chiave pubblica SSH ConnTest: %1$s</string>
+    <string name="export_hosts">Esporta server</string>
+    <string name="import_hosts">Importa server</string>
+    <string name="share_hosts">Condividi server</string>
+    <string name="export">Esporta</string>
+    <string name="share">Condividi</string>
+    <string name="hosts_export_warning">Il file JSON contiene gli indirizzi dei server, i nomi utente e le impostazioni di connessione salvati. Non contiene password o chiavi SSH private. Conservalo in modo sicuro e condividilo solo con persone fidate.</string>
+    <string name="no_hosts_to_export">Non ci sono server salvati da esportare.</string>
+    <string name="hosts_exported">Elenco dei server esportato.</string>
+    <string name="hosts_export_failed">Impossibile esportare o condividere l’elenco dei server: %1$s</string>
+    <string name="hosts_import_failed">Impossibile importare l’elenco dei server: %1$s</string>
+    <string name="hosts_share_subject">Elenco dei server ConnTest</string>
+    <string name="hosts_import_choice">Il file contiene %1$d server. Aggiungerli all’elenco corrente o sostituire l’elenco corrente? Per le chiavi SSH mancanti verrà usata “main”.</string>
+    <string name="add_imported_hosts">Aggiungi</string>
+    <string name="replace_hosts">Sostituisci</string>
+    <string name="hosts_imported">Importati %1$d server.</string>
 </resources>

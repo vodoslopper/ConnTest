@@ -62,4 +62,19 @@
     <string name="menu_switch_theme">Design wechseln</string>
     <string name="share_public_key">Öffentlichen Schlüssel teilen</string>
     <string name="public_key_subject">Öffentlicher ConnTest-SSH-Schlüssel: %1$s</string>
+    <string name="export_hosts">Server exportieren</string>
+    <string name="import_hosts">Server importieren</string>
+    <string name="share_hosts">Server teilen</string>
+    <string name="export">Exportieren</string>
+    <string name="share">Teilen</string>
+    <string name="hosts_export_warning">Die JSON-Datei enthält gespeicherte Serveradressen, Benutzernamen und Verbindungseinstellungen. Sie enthält weder Passwörter noch private SSH-Schlüssel. Bewahren Sie die Datei sicher auf und teilen Sie sie nur mit vertrauenswürdigen Personen.</string>
+    <string name="no_hosts_to_export">Es gibt keine gespeicherten Server zum Exportieren.</string>
+    <string name="hosts_exported">Serverliste exportiert.</string>
+    <string name="hosts_export_failed">Die Serverliste konnte nicht exportiert oder geteilt werden: %1$s</string>
+    <string name="hosts_import_failed">Die Serverliste konnte nicht importiert werden: %1$s</string>
+    <string name="hosts_share_subject">ConnTest-Serverliste</string>
+    <string name="hosts_import_choice">Die Datei enthält %1$d Server. Sollen sie zur aktuellen Liste hinzugefügt oder soll die aktuelle Liste ersetzt werden? Fehlende SSH-Schlüssel verwenden „main“.</string>
+    <string name="add_imported_hosts">Hinzufügen</string>
+    <string name="replace_hosts">Ersetzen</string>
+    <string name="hosts_imported">%1$d Server importiert.</string>
 </resources>

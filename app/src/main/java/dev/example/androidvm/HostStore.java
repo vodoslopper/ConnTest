@@ -7,6 +7,7 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
@@ -143,6 +144,30 @@ final class HostStore {
         if (changed) persist();
     }
 
+    String exportDocument() {
+        Host selected = selected();
+        return HostListTransfer.encode(hosts, selected == null ? "" : selected.id);
+    }
+
+    int importDocument(HostListTransfer.Document document, boolean replace,
+            List<String> availableKeyNames) {
+        HostListTransfer.Document imported = replace
+                ? document : HostListTransfer.copyForAdd(document);
+        String previousSelectedId = selected() == null ? "" : selected().id;
+        if (replace) hosts.clear();
+        for (Host host : imported.hosts) {
+            if (!availableKeyNames.contains(host.keyName)) {
+                host.keyName = SshIdentityStore.DEFAULT_NAME;
+            }
+            hosts.add(host);
+        }
+        String selectedId = replace ? imported.selectedHostId : previousSelectedId;
+        if (selectedId.isEmpty() && !hosts.isEmpty()) selectedId = hosts.get(0).id;
+        preferences.edit().putString(SELECTED, selectedId).apply();
+        persist();
+        return imported.hosts.size();
+    }
+
     private boolean load() {
         boolean containedPassword = false;
         try {
@@ -165,6 +190,11 @@ final class HostStore {
                 .remove("password")
                 .remove("sshPassword")
                 .apply();
+        File cachedExport = new File(new File(context.getCacheDir(), "shared-hosts"),
+                "conntest-servers.json");
+        if (cachedExport.isFile() && !cachedExport.delete()) {
+            ConnectionLog.append("Could not remove the previous cached server export");
+        }
     }
 
     private void migrateLegacy(Context context) {

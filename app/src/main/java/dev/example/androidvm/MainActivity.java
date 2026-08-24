@@ -36,8 +36,10 @@ import com.jcraft.jsch.JSchException;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.InetSocketAddress;
 import java.net.Proxy;
@@ -50,6 +52,8 @@ import java.util.concurrent.Executors;
 
 public final class MainActivity extends Activity {
     private static final int ROUTING_REQUEST = 100;
+    private static final int EXPORT_HOSTS_REQUEST = 200;
+    private static final int IMPORT_HOSTS_REQUEST = 201;
     private static final int MENU_HOME = 1;
     private static final int MENU_HOSTS = 2;
     private static final int MENU_KEYS = 3;
@@ -58,6 +62,7 @@ public final class MainActivity extends Activity {
     private static final String NIGHT_OVERRIDE = "nightOverride";
     private static final String DEFAULT_TEST_URL = "https://api.ipify.org?format=json";
     private static final int MAX_HTTP_RESPONSE_BYTES = 64 * 1024;
+    private static final int MAX_HOSTS_FILE_BYTES = 1024 * 1024;
 
     private final Handler statusHandler = new Handler();
     private final ExecutorService httpWorker = Executors.newSingleThreadExecutor();
@@ -152,7 +157,15 @@ public final class MainActivity extends Activity {
 
     @Override protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
-        if (requestCode == ROUTING_REQUEST && resultCode == RESULT_OK && pendingConnectIntent != null) {
+        if (requestCode == EXPORT_HOSTS_REQUEST) {
+            if (resultCode == RESULT_OK && data != null && data.getData() != null) {
+                writeHostsDocument(data.getData());
+            }
+        } else if (requestCode == IMPORT_HOSTS_REQUEST) {
+            if (resultCode == RESULT_OK && data != null && data.getData() != null) {
+                readHostsDocument(data.getData());
+            }
+        } else if (requestCode == ROUTING_REQUEST && resultCode == RESULT_OK && pendingConnectIntent != null) {
             startRoutingService(pendingConnectIntent);
             pendingConnectIntent = null;
         } else if (requestCode == ROUTING_REQUEST) {
@@ -276,7 +289,125 @@ public final class MainActivity extends Activity {
         LinearLayout.LayoutParams params = matchWrap();
         params.setMargins(0, dp(12), 0, 0);
         content.addView(add, params);
+        LinearLayout transferActions = new LinearLayout(this);
+        transferActions.setOrientation(LinearLayout.HORIZONTAL);
+        transferActions.addView(button(R.string.export_hosts, view -> confirmHostsExport(false)), weighted());
+        transferActions.addView(button(R.string.import_hosts, view -> launchHostsImport()), weighted());
+        transferActions.addView(button(R.string.share_hosts, view -> confirmHostsExport(true)), weighted());
+        LinearLayout.LayoutParams transferParams = matchWrap();
+        transferParams.setMargins(0, dp(8), 0, 0);
+        content.addView(transferActions, transferParams);
         setScrollableContent(content);
+    }
+
+    private void confirmHostsExport(boolean share) {
+        if (hostStore.all().isEmpty()) {
+            Toast.makeText(this, R.string.no_hosts_to_export, Toast.LENGTH_LONG).show();
+            return;
+        }
+        new AlertDialog.Builder(this)
+                .setTitle(share ? R.string.share_hosts : R.string.export_hosts)
+                .setMessage(R.string.hosts_export_warning)
+                .setNegativeButton(android.R.string.cancel, null)
+                .setPositiveButton(share ? R.string.share : R.string.export, (dialog, which) -> {
+                    if (share) shareHostsDocument(); else launchHostsExport();
+                }).show();
+    }
+
+    private void launchHostsExport() {
+        Intent intent = new Intent(Intent.ACTION_CREATE_DOCUMENT)
+                .addCategory(Intent.CATEGORY_OPENABLE)
+                .setType("application/json")
+                .putExtra(Intent.EXTRA_TITLE, "conntest-servers.json");
+        startActivityForResult(intent, EXPORT_HOSTS_REQUEST);
+    }
+
+    private void launchHostsImport() {
+        Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT)
+                .addCategory(Intent.CATEGORY_OPENABLE)
+                .setType("application/json")
+                .putExtra(Intent.EXTRA_MIME_TYPES,
+                        new String[]{"application/json", "text/json", "text/plain"});
+        startActivityForResult(intent, IMPORT_HOSTS_REQUEST);
+    }
+
+    private void writeHostsDocument(Uri uri) {
+        try (OutputStream output = getContentResolver().openOutputStream(uri, "wt")) {
+            if (output == null) throw new IOException("could not open destination");
+            output.write(hostStore.exportDocument().getBytes(StandardCharsets.UTF_8));
+            Toast.makeText(this, R.string.hosts_exported, Toast.LENGTH_LONG).show();
+        } catch (IOException | RuntimeException exception) {
+            showError(getString(R.string.hosts_export_failed, readableMessage(exception)));
+        }
+    }
+
+    private void shareHostsDocument() {
+        try {
+            File directory = new File(getCacheDir(), "shared-hosts");
+            if (!directory.isDirectory() && !directory.mkdirs()) {
+                throw new IOException("could not create server-share directory");
+            }
+            File file = new File(directory, "conntest-servers.json");
+            try (OutputStream output = new FileOutputStream(file)) {
+                output.write(hostStore.exportDocument().getBytes(StandardCharsets.UTF_8));
+            }
+            Uri uri = FileProvider.getUriForFile(this, getPackageName() + ".files", file);
+            Intent share = new Intent(Intent.ACTION_SEND)
+                    .setType("application/json")
+                    .putExtra(Intent.EXTRA_SUBJECT, getString(R.string.hosts_share_subject))
+                    .putExtra(Intent.EXTRA_STREAM, uri)
+                    .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            share.setClipData(ClipData.newRawUri("ConnTest servers", uri));
+            startActivity(Intent.createChooser(share, getString(R.string.share_hosts)));
+        } catch (IOException | IllegalArgumentException exception) {
+            showError(getString(R.string.hosts_export_failed, readableMessage(exception)));
+        }
+    }
+
+    private void readHostsDocument(Uri uri) {
+        try (InputStream input = getContentResolver().openInputStream(uri)) {
+            if (input == null) throw new IOException("could not open file");
+            String json = readLimited(input, MAX_HOSTS_FILE_BYTES);
+            HostListTransfer.Document document = HostListTransfer.decode(json);
+            showHostsImportChoice(document);
+        } catch (Exception exception) {
+            showError(getString(R.string.hosts_import_failed, readableMessage(exception)));
+        }
+    }
+
+    private void showHostsImportChoice(HostListTransfer.Document document) {
+        new AlertDialog.Builder(this)
+                .setTitle(R.string.import_hosts)
+                .setMessage(getString(R.string.hosts_import_choice, document.hosts.size()))
+                .setNegativeButton(android.R.string.cancel, null)
+                .setNeutralButton(R.string.add_imported_hosts,
+                        (dialog, which) -> applyHostsImport(document, false))
+                .setPositiveButton(R.string.replace_hosts,
+                        (dialog, which) -> applyHostsImport(document, true))
+                .show();
+    }
+
+    private void applyHostsImport(HostListTransfer.Document document, boolean replace) {
+        try {
+            int count = hostStore.importDocument(document, replace, SshIdentityStore.names(this));
+            Toast.makeText(this, getString(R.string.hosts_imported, count), Toast.LENGTH_LONG).show();
+            showHostsPage();
+        } catch (IOException | JSchException | RuntimeException exception) {
+            showError(getString(R.string.hosts_import_failed, readableMessage(exception)));
+        }
+    }
+
+    private static String readLimited(InputStream input, int maximumBytes) throws IOException {
+        ByteArrayOutputStream output = new ByteArrayOutputStream();
+        byte[] buffer = new byte[4096];
+        int total = 0;
+        int count;
+        while ((count = input.read(buffer)) != -1) {
+            if (total + count > maximumBytes) throw new IOException("file is larger than 1 MiB");
+            output.write(buffer, 0, count);
+            total += count;
+        }
+        return new String(output.toByteArray(), StandardCharsets.UTF_8);
     }
 
     private void showHostDialog(HostStore.Host existing) {

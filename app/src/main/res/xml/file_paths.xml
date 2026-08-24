@@ -3,4 +3,7 @@
     <cache-path
         name="shared_connection_logs"
         path="shared-logs/" />
+    <cache-path
+        name="shared_hosts"
+        path="shared-hosts/" />
 </paths>
