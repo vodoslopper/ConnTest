@@ -44,7 +44,6 @@ final class SshSocksEndpoint implements AutoCloseable {
     private final int sshPort;
     private final String user;
     private final byte[] privateKey;
-    private final String password;
     private final int socksPort;
     private final boolean acceptUnknownHost;
     private final JumpHost jumpHost;
@@ -79,7 +78,6 @@ final class SshSocksEndpoint implements AutoCloseable {
             int sshPort,
             String user,
             byte[] privateKey,
-            String password,
             int socksPort,
             boolean acceptUnknownHost,
             JumpHost jumpHost) {
@@ -88,7 +86,6 @@ final class SshSocksEndpoint implements AutoCloseable {
         this.sshPort = sshPort;
         this.user = user;
         this.privateKey = privateKey;
-        this.password = password;
         this.socksPort = socksPort;
         this.acceptUnknownHost = acceptUnknownHost;
         this.jumpHost = jumpHost;
@@ -99,16 +96,14 @@ final class SshSocksEndpoint implements AutoCloseable {
         final int port;
         final String user;
         final byte[] privateKey;
-        final String password;
         final boolean acceptUnknownHost;
 
-        JumpHost(String host, int port, String user, byte[] privateKey, String password,
+        JumpHost(String host, int port, String user, byte[] privateKey,
                 boolean acceptUnknownHost) {
             this.host = host;
             this.port = port;
             this.user = user;
             this.privateKey = privateKey;
-            this.password = password;
             this.acceptUnknownHost = acceptUnknownHost;
         }
     }
@@ -127,13 +122,8 @@ final class SshSocksEndpoint implements AutoCloseable {
             }
         }
         session = jsch.getSession(user, host, sshPort);
-        if (password != null && !password.isEmpty()) {
-            session.setPassword(password);
-        }
         session.setConfig("StrictHostKeyChecking", "yes");
-        session.setConfig(
-                "PreferredAuthentications",
-                "publickey,password,keyboard-interactive");
+        session.setConfig("PreferredAuthentications", "publickey");
         session.setServerAliveInterval(15_000);
         session.setServerAliveCountMax(3);
         if (jumpSession == null) {
@@ -178,12 +168,8 @@ final class SshSocksEndpoint implements AutoCloseable {
             }
         }
         jumpSession = jsch.getSession(jumpHost.user, jumpHost.host, jumpHost.port);
-        if (jumpHost.password != null && !jumpHost.password.isEmpty()) {
-            jumpSession.setPassword(jumpHost.password);
-        }
         jumpSession.setConfig("StrictHostKeyChecking", "yes");
-        jumpSession.setConfig("PreferredAuthentications",
-                "publickey,password,keyboard-interactive");
+        jumpSession.setConfig("PreferredAuthentications", "publickey");
         jumpSession.setServerAliveInterval(15_000);
         jumpSession.setServerAliveCountMax(3);
         jumpSession.setSocketFactory(new ProtectedSocketFactory(routingService));

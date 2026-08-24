@@ -53,7 +53,6 @@ public final class ConnTestRoutingService extends VpnService {
             int sshPort,
             String user,
             byte[] privateKey,
-            String password,
             int socksPort,
             boolean acceptUnknownHost,
             List<String> dnsServers,
@@ -65,7 +64,6 @@ public final class ConnTestRoutingService extends VpnService {
                 .putExtra("sshPort", sshPort)
                 .putExtra("user", user)
                 .putExtra("privateKey", privateKey)
-                .putExtra("password", password)
                 .putExtra("socksPort", socksPort)
                 .putExtra("acceptUnknownHost", acceptUnknownHost)
                 .putExtra("dnsServers", dnsServers.toArray(new String[0]));
@@ -74,7 +72,6 @@ public final class ConnTestRoutingService extends VpnService {
                     .putExtra("jumpPort", jumpHost.sshPort)
                     .putExtra("jumpUser", jumpHost.user)
                     .putExtra("jumpPrivateKey", jumpPrivateKey)
-                    .putExtra("jumpPassword", jumpHost.password)
                     .putExtra("jumpAcceptUnknownHost", jumpHost.acceptUnknown);
         }
         return intent;
@@ -113,7 +110,6 @@ public final class ConnTestRoutingService extends VpnService {
             final int sshPort = intent.getIntExtra("sshPort", 22);
             final String user = intent.getStringExtra("user");
             final byte[] privateKey = intent.getByteArrayExtra("privateKey");
-            final String password = intent.getStringExtra("password");
             final int socksPort = intent.getIntExtra("socksPort", 1080);
             final boolean acceptUnknownHost =
                     intent.getBooleanExtra("acceptUnknownHost", false);
@@ -126,7 +122,6 @@ public final class ConnTestRoutingService extends VpnService {
                     sshPort,
                     user,
                     privateKey,
-                    password,
                     socksPort,
                     acceptUnknownHost,
                     dnsServers,
@@ -134,7 +129,6 @@ public final class ConnTestRoutingService extends VpnService {
                     intent.getIntExtra("jumpPort", 22),
                     intent.getStringExtra("jumpUser"),
                     intent.getByteArrayExtra("jumpPrivateKey"),
-                    intent.getStringExtra("jumpPassword"),
                     intent.getBooleanExtra("jumpAcceptUnknownHost", false));
             stopRequested = false;
             active = true;
@@ -516,7 +510,6 @@ public final class ConnTestRoutingService extends VpnService {
         final int sshPort;
         final String user;
         final byte[] privateKey;
-        final String password;
         final int socksPort;
         final boolean acceptUnknownHost;
         final List<String> dnsServers;
@@ -524,7 +517,6 @@ public final class ConnTestRoutingService extends VpnService {
         final int jumpPort;
         final String jumpUser;
         final byte[] jumpPrivateKey;
-        final String jumpPassword;
         final boolean jumpAcceptUnknownHost;
 
         ConnectionParameters(
@@ -532,7 +524,6 @@ public final class ConnTestRoutingService extends VpnService {
                 int sshPort,
                 String user,
                 byte[] privateKey,
-                String password,
                 int socksPort,
                 boolean acceptUnknownHost,
                 List<String> dnsServers,
@@ -540,13 +531,11 @@ public final class ConnTestRoutingService extends VpnService {
                 int jumpPort,
                 String jumpUser,
                 byte[] jumpPrivateKey,
-                String jumpPassword,
                 boolean jumpAcceptUnknownHost) {
             this.host = host;
             this.sshPort = sshPort;
             this.user = user;
             this.privateKey = privateKey;
-            this.password = password == null ? "" : password;
             this.socksPort = socksPort;
             this.acceptUnknownHost = acceptUnknownHost;
             this.dnsServers = dnsServers;
@@ -554,7 +543,6 @@ public final class ConnTestRoutingService extends VpnService {
             this.jumpPort = jumpPort;
             this.jumpUser = jumpUser;
             this.jumpPrivateKey = jumpPrivateKey;
-            this.jumpPassword = jumpPassword == null ? "" : jumpPassword;
             this.jumpAcceptUnknownHost = jumpAcceptUnknownHost;
         }
 
@@ -565,7 +553,6 @@ public final class ConnTestRoutingService extends VpnService {
                             jumpPort,
                             jumpUser,
                             copy(jumpPrivateKey),
-                            jumpPassword,
                             jumpAcceptUnknownHost);
             return new SshSocksEndpoint(
                     service,
@@ -573,7 +560,6 @@ public final class ConnTestRoutingService extends VpnService {
                     sshPort,
                     user,
                     copy(privateKey),
-                    password,
                     socksPort,
                     acceptUnknownHost,
                     jump);

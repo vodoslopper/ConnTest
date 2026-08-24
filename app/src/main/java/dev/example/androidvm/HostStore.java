@@ -23,7 +23,6 @@ final class HostStore {
         String address = "";
         int sshPort = 22;
         String user = "";
-        String password = "";
         int socksPort = 1080;
         boolean acceptUnknown = true;
         String keyName = SshIdentityStore.DEFAULT_NAME;
@@ -38,7 +37,7 @@ final class HostStore {
             JSONArray dns = new JSONArray();
             for (String server : dnsServers) dns.put(server);
             return new JSONObject().put("id", id).put("name", name).put("address", address)
-                    .put("sshPort", sshPort).put("user", user).put("password", password)
+                    .put("sshPort", sshPort).put("user", user)
                     .put("socksPort", socksPort).put("acceptUnknown", acceptUnknown)
                     .put("keyName", keyName).put("jumpHostId", jumpHostId)
                     .put("dnsServers", dns);
@@ -51,7 +50,6 @@ final class HostStore {
             host.address = json.optString("address");
             host.sshPort = json.optInt("sshPort", 22);
             host.user = json.optString("user");
-            host.password = json.optString("password");
             host.socksPort = json.optInt("socksPort", 1080);
             host.acceptUnknown = json.optBoolean("acceptUnknown", true);
             host.keyName = json.optString("keyName", SshIdentityStore.DEFAULT_NAME);
@@ -76,7 +74,8 @@ final class HostStore {
 
     HostStore(Context context) {
         preferences = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
-        load();
+        if (load()) persist();
+        purgeLegacyPasswordData(context);
         migrateLegacy(context);
     }
 
@@ -144,13 +143,28 @@ final class HostStore {
         if (changed) persist();
     }
 
-    private void load() {
+    private boolean load() {
+        boolean containedPassword = false;
         try {
             JSONArray array = new JSONArray(preferences.getString(RECORDS, "[]"));
-            for (int i = 0; i < array.length(); i++) hosts.add(Host.fromJson(array.getJSONObject(i)));
+            for (int i = 0; i < array.length(); i++) {
+                JSONObject record = array.getJSONObject(i);
+                containedPassword |= record.has("password");
+                hosts.add(Host.fromJson(record));
+            }
         } catch (JSONException ignored) {
             hosts.clear();
+            preferences.edit().remove(RECORDS).apply();
+            return false;
         }
+        return containedPassword;
+    }
+
+    private static void purgeLegacyPasswordData(Context context) {
+        context.getSharedPreferences("connection", Context.MODE_PRIVATE).edit()
+                .remove("password")
+                .remove("sshPassword")
+                .apply();
     }
 
     private void migrateLegacy(Context context) {

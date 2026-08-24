@@ -14,7 +14,6 @@
     <string name="regenerate_key_warning">La vecchia chiave verrà sostituita definitivamente. Le connessioni non riusciranno finché la nuova chiave pubblica non sarà aggiunta al server SSH.</string>
     <string name="key_generation_failed">Impossibile generare la chiave Ed25519: %1$s</string>
     <string name="generated_key_required">È necessaria una chiave Ed25519 generata</string>
-    <string name="ssh_password">Password SSH di riserva (facoltativa)</string>
     <string name="socks_port">Porta SOCKS locale</string>
     <string name="dns_servers">Server DNS</string>
     <string name="dns_servers_hint">Indirizzi IPv4, uno per riga</string>

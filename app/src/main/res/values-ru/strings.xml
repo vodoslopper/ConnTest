@@ -14,7 +14,6 @@
     <string name="regenerate_key_warning">Старый ключ будет безвозвратно заменён. Подключение не будет работать, пока новый открытый ключ не будет добавлен на SSH-сервер.</string>
     <string name="key_generation_failed">Не удалось создать ключ Ed25519: %1$s</string>
     <string name="generated_key_required">Необходим созданный ключ Ed25519</string>
-    <string name="ssh_password">Пароль SSH (если нужен)</string>
     <string name="socks_port">Локальный порт SOCKS</string>
     <string name="dns_servers">DNS-серверы</string>
     <string name="dns_servers_hint">IPv4-адреса, по одному в строке</string>

@@ -286,7 +286,6 @@ public final class MainActivity extends Activity {
         EditText address = field(R.string.ssh_host, InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_URI);
         EditText sshPort = field(R.string.ssh_port, InputType.TYPE_CLASS_NUMBER);
         EditText user = field(R.string.ssh_username, InputType.TYPE_CLASS_TEXT);
-        EditText password = field(R.string.ssh_password, InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_PASSWORD);
         EditText socksPort = field(R.string.socks_port, InputType.TYPE_CLASS_NUMBER);
         EditText dnsServers = field(R.string.dns_servers_hint,
                 InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_MULTI_LINE);
@@ -312,7 +311,7 @@ public final class MainActivity extends Activity {
         jumpHosts.setAdapter(new ArrayAdapter<>(this,
                 android.R.layout.simple_spinner_dropdown_item, jumpLabels));
         name.setText(host.name); address.setText(host.address); sshPort.setText(Integer.toString(host.sshPort));
-        user.setText(host.user); password.setText(host.password); socksPort.setText(Integer.toString(host.socksPort));
+        user.setText(host.user); socksPort.setText(Integer.toString(host.socksPort));
         dnsServers.setText(DnsServers.format(host.dnsServers));
         acceptUnknown.setChecked(host.acceptUnknown);
         int keyIndex = keyNames.indexOf(host.keyName);
@@ -321,7 +320,7 @@ public final class MainActivity extends Activity {
         for (int i = 0; i < jumpCandidates.size(); i++) {
             if (jumpCandidates.get(i).id.equals(host.jumpHostId)) jumpIndex = i + 1;
         }
-        form.addView(name); form.addView(address); form.addView(sshPort); form.addView(user); form.addView(password);
+        form.addView(name); form.addView(address); form.addView(sshPort); form.addView(user);
         TextView keyLabel = text(R.string.host_key); keyLabel.setPadding(0, dp(10), 0, 0); form.addView(keyLabel);
         form.addView(keys);
         TextView jumpLabel = text(R.string.jump_host); jumpLabel.setPadding(0, dp(10), 0, 0); form.addView(jumpLabel);
@@ -372,7 +371,7 @@ public final class MainActivity extends Activity {
                                 ? getString(R.string.dns_servers_required)
                                 : getString(R.string.invalid_dns_server, exception.getMessage()));
                     }
-                    host.password = password.getText().toString(); host.acceptUnknown = acceptUnknown.isChecked();
+                    host.acceptUnknown = acceptUnknown.isChecked();
                     host.keyName = (String) keys.getSelectedItem();
                     int selectedJump = jumpHosts.getSelectedItemPosition();
                     host.jumpHostId = selectedJump == 0 ? ""
@@ -496,7 +495,7 @@ public final class MainActivity extends Activity {
             ConnectionLog.clear();
             ConnectionLog.append("Connection requested for " + host.user + "@" + host.address + ":" + host.sshPort + " using key '" + host.keyName + "'");
             pendingConnectIntent = ConnTestRoutingService.connectIntent(this, host.address, host.sshPort,
-                    host.user, identity.readPrivateKey(), host.password, host.socksPort,
+                    host.user, identity.readPrivateKey(), host.socksPort,
                     host.acceptUnknown, host.dnsServers, jump,
                     jumpIdentity == null ? null : jumpIdentity.readPrivateKey());
             Intent permissionIntent = VpnService.prepare(this);
