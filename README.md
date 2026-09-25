@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="app/src/main/res/drawable-nodpi/ic_conntest.png" alt="ConnTest logo" width="240">
+</p>
+
 # ConnTest
 
 > [!WARNING]
